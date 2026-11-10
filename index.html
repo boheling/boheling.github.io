@@ -4,189 +4,287 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>boheling</title>
-<meta name="description" content="做东西的人：讲解片、让 agent 做视频的工具，和一座装进房车的分子实验室。 / Films that explain things, a tool that lets coding agents make video, and a molecular lab built into an RV.">
+<meta name="description" content="我做东西，多半是讲解性的东西。 / I make things, mostly things that explain.">
 <link rel="icon" href="assets/favicon.svg">
+<meta property="og:title" content="boheling">
+<meta property="og:description" content="我做东西，多半是讲解性的东西。 / I make things, mostly things that explain.">
+<meta property="og:image" content="https://boheling.github.io/assets/plate-films.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..700,0..100,0..1;1,9..144,300..600,0..100,0..1&family=Noto+Serif+SC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #f4f2f7;
-    --paper-2: #fbfafd;
-    --ink: #342c44;
-    --muted: #746b80;
-    --iris: #71609b;
-    --lilac: #ded7e9;
-    --butter: #edcf80;
-    --line: #d7d1df;
-    --display: "Newsreader", "Noto Serif SC", "Songti SC", serif;
+    /* A wall under north light. Cool lilac plaster, plum ink, never black —
+       the three pictures hung on it are all cool, so the room carries the warmth. */
+    --plaster:      #F3EFF5;
+    --plaster-lit:  #FCFAFD;
+    --plaster-deep: #E4DCEA;
+    --ink:          #3A3048;
+    --ink-soft:     #80758F;
+    --iris:         #6B55A0;
+    --blush:        #E9C6C2;
+
+    --latin: "Fraunces", Georgia, serif;
+    --han: "Noto Serif SC", "Songti SC", serif;
+    --face: var(--latin), var(--han);
+
+    --measure: 33rem;
   }
+
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper: #1b1726; --paper-2: #231e30; --ink: #ece8f3; --muted: #a79dba;
-      --iris: #b4a3dc; --lilac: #3a3150; --line: #3a3150;
+      --plaster: #211C2B; --plaster-lit: #2B2437; --plaster-deep: #171320;
+      --ink: #EEE9F4; --ink-soft: #A79CBA; --iris: #BCA6E6; --blush: #6D4A52;
     }
   }
+
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
+
   body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font-family: var(--display);
-    font-size: 19px; line-height: 1.65;
+    margin: 0;
+    min-height: 100%;
+    background: var(--plaster);
+    color: var(--ink);
+    font-family: var(--face);
+    font-variation-settings: "SOFT" 40, "WONK" 0, "opsz" 14;
+    font-size: 19px;
+    line-height: 1.62;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  .wrap { max-width: 44rem; margin: 0 auto; padding: 0 16px 6rem; }
 
-  header { display: flex; align-items: baseline; justify-content: space-between;
-    gap: 1rem; padding: 3.5rem 0 0; }
-  .me { font-size: 1.05rem; font-weight: 600; letter-spacing: .01em; }
-  .me a { color: inherit; text-decoration: none; }
-  .lang { display: flex; gap: .15rem; font-size: .8rem; }
+  /* The light. Not decoration — a source, up and to the left, falling off to the
+     lower right, with the faintest warm bounce. It settles once on load. */
+  .room {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(60rem 48rem at 12% -6%, var(--plaster-lit) 0%, transparent 62%),
+      radial-gradient(44rem 38rem at 88% 108%, var(--plaster-deep) 0%, transparent 60%),
+      radial-gradient(34rem 30rem at 22% 6%, color-mix(in srgb, var(--blush) 26%, transparent) 0%, transparent 70%);
+    opacity: 0;
+    animation: settle 2.4s cubic-bezier(.22,.61,.36,1) forwards;
+  }
+  @keyframes settle { from { opacity: 0; transform: translate3d(-1.2rem, -1rem, 0) scale(1.04); }
+                      to   { opacity: 1; transform: none; } }
+
+  .page { max-width: 68rem; margin: 0 auto; padding: 0 2rem 7rem; }
+
+  /* ---- the top of the wall ---- */
+  .top { display: flex; align-items: baseline; justify-content: space-between;
+    gap: 2rem; padding: 3.2rem 0 0; }
+  .sig { font-size: 1.02rem; font-weight: 500; letter-spacing: .015em;
+    font-variation-settings: "SOFT" 60, "WONK" 1, "opsz" 12; }
+  .sig a { color: inherit; text-decoration: none; }
+
+  .lang { display: flex; align-items: baseline; gap: .7rem; font-size: .82rem; }
   .lang button {
-    font: inherit; font-size: .8rem; font-family: var(--display);
-    background: none; border: 1px solid transparent; color: var(--muted);
-    padding: .2rem .55rem; border-radius: 999px; cursor: pointer;
+    font-family: var(--face); font-size: .82rem; line-height: 1;
+    background: none; border: 0; padding: .3rem 0; cursor: pointer;
+    color: var(--ink-soft); border-bottom: 1px solid transparent;
   }
-  .lang button[aria-pressed="true"] { color: var(--ink); border-color: var(--line); background: var(--paper-2); }
+  .lang button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--iris); }
+  .lang button:hover { color: var(--ink); }
 
-  .intro { margin: 3.2rem 0 0; }
-  .intro h1 { font-size: clamp(2.1rem, 7vw, 3rem); line-height: 1.12; font-weight: 600;
-    margin: 0 0 1.4rem; letter-spacing: -.015em; }
-  .intro p { margin: 0 0 1rem; max-width: 36rem; }
-  .intro p.sub { color: var(--muted); }
+  /* ---- introductory wall text ---- */
+  .intro { margin: clamp(3.5rem, 9vw, 6.5rem) 0 0; max-width: var(--measure); }
+  .intro h1 {
+    margin: 0;
+    font-size: clamp(3.2rem, 11vw, 5.6rem);
+    line-height: .96;
+    font-weight: 400;
+    letter-spacing: -.025em;
+    font-variation-settings: "SOFT" 90, "WONK" 1, "opsz" 120;
+  }
+  html[lang="zh"] .intro h1 { letter-spacing: .01em; line-height: 1.06; font-weight: 500;
+    font-size: clamp(2.9rem, 10vw, 4.8rem); }
+  .stroke { display: block; width: clamp(9rem, 22vw, 14rem); height: 14px; margin: 1.6rem 0 2rem; color: color-mix(in srgb, var(--blush) 72%, var(--iris) 28%); }
+  .intro p { margin: 0 0 1.05rem; }
+  .intro p:last-child { color: var(--ink-soft); }
 
-  .rule { height: 1px; background: var(--line); border: 0; margin: 3.2rem 0 0; }
+  /* ---- the hang: three works, three sizes, three heights ---- */
+  .hang { margin: clamp(4.5rem, 11vw, 8rem) 0 0;
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 0 2.2rem; }
 
-  .work { margin: 0; padding: 0; list-style: none; }
-  .work li { border-bottom: 1px solid var(--line); }
-  .card { display: block; text-decoration: none; color: inherit; padding: 2.1rem 0; }
-  .card:hover .ttl, .card:focus-visible .ttl { color: var(--iris); }
-  .card:focus-visible { outline: 2px solid var(--iris); outline-offset: 6px; border-radius: 4px; }
-  .head { display: flex; align-items: center; gap: .85rem; margin-bottom: .55rem; }
-  .mark { flex: none; width: 34px; height: 34px; color: var(--iris); }
-  .ttl { font-size: 1.42rem; font-weight: 600; letter-spacing: -.01em; transition: color .15s; }
-  .card p { margin: 0; color: var(--muted); max-width: 38rem; }
-  .meta { display: block; margin-top: .7rem; font-size: .83rem; color: var(--iris);
-    letter-spacing: .02em; }
+  .work { margin: 0; min-width: 0; --tilt: 0deg; }
+  .work a { display: block; text-decoration: none; color: inherit; }
+  .work a:focus-visible { outline: 2px solid var(--iris); outline-offset: 14px; border-radius: 2px; }
 
-  footer { margin-top: 3.4rem; font-size: .88rem; color: var(--muted); }
-  footer a { color: var(--iris); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .frame {
+    display: block; width: 100%; height: auto;
+    background: var(--plaster-lit);
+    padding: .55rem;
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--ink) 12%, transparent),
+      1.4rem 1.9rem 3.4rem color-mix(in srgb, var(--ink) 11%, transparent);
+    transform: rotate(var(--tilt));
+    transition: transform .5s cubic-bezier(.22,.61,.36,1), box-shadow .5s;
+  }
+  .work a:hover .frame, .work a:focus-visible .frame {
+    transform: rotate(var(--tilt)) translateY(-6px);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--ink) 14%, transparent),
+      1.6rem 2.4rem 4.2rem color-mix(in srgb, var(--ink) 15%, transparent);
+  }
 
-  [data-en] { display: none; }
-  html[lang="en"] [data-en] { display: revert; }
-  html[lang="en"] [data-zh] { display: none; }
-  @media (max-width: 560px) { body { font-size: 18px; } header { padding-top: 2.4rem; } }
+  /* Hung, not placed: under a degree, and each a different way. */
+  .work--films     { grid-column: 1 / 8;  --tilt: -.45deg; }
+  .work--storyshot { grid-column: 9 / 13; margin-top: clamp(2.5rem, 7vw, 5.5rem); --tilt: .6deg; }
+  .work--lab       { grid-column: 3 / 11; margin-top: clamp(3.5rem, 9vw, 7rem); --tilt: .3deg; }
+  .work--lab .frame       { transform: rotate(.3deg); }
+
+  /* ---- the wall label ---- */
+  .label { margin: 1.5rem 0 0; max-width: 27rem; }
+  .work--storyshot .label { max-width: 22rem; }
+  .label h2 { margin: 0 0 .4rem; font-size: 1.32rem; font-weight: 500; line-height: 1.25;
+    letter-spacing: -.008em; font-variation-settings: "SOFT" 70, "WONK" 1, "opsz" 24; }
+  .work a:hover .label h2 { color: var(--iris); }
+  .label p { margin: 0; font-size: .95rem; line-height: 1.6; color: var(--ink-soft); }
+  .label .where { display: block; margin-top: .55rem; font-size: .83rem; color: var(--iris); }
+
+  /* ---- the bottom of the wall ---- */
+  .foot { margin: clamp(5rem, 12vw, 8rem) 0 0; max-width: var(--measure);
+    font-size: .95rem; color: var(--ink-soft); }
+  .foot a { color: var(--iris); text-underline-offset: 4px;
+    text-decoration-thickness: from-font; }
+
+  @media (max-width: 860px) {
+    .page { padding: 0 1.4rem 5rem; }
+    .hang { display: block; }
+    .work { margin-top: clamp(3rem, 12vw, 5rem); }
+    .work--films { margin-top: 0; }
+    .work--storyshot { width: 76%; margin-left: auto; }
+    .work--lab { width: 92%; }
+    .frame { padding: .4rem; }
+    .label { max-width: none; }
+  }
+  @media (max-width: 560px) {
+    body { font-size: 18px; }
+    .work--storyshot, .work--lab { width: 100%; }
+    .work { --tilt: 0deg; }
+  }
+
+  /* Which language shows. Last in the file, and matched on html[lang] so that it
+     outranks any component rule that sets `display`. It has to be the HIDE rule that
+     carries the weight, not the show rule: `.label .where { display: block }` is
+     (0,2,0) and was beating a bare `[data-en] { display: none }` at (0,1,0), so every
+     wall label printed both languages at once. */
+  html[lang="zh"] [data-en], html[lang="en"] [data-zh] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .room { animation: none; opacity: 1; }
+    .frame, .work a:hover .frame { transition: none; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="room" aria-hidden="true"></div>
 
-  <header>
-    <div class="me"><a href="/">boheling</a></div>
+<div class="page">
+
+  <div class="top">
+    <div class="sig"><a href="/">boheling</a></div>
     <div class="lang" role="group" aria-label="Language / 语言">
       <button type="button" data-set-lang="zh" aria-pressed="true">中文</button>
-      <button type="button" data-set-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-set-lang="en" aria-pressed="false">English</button>
     </div>
-  </header>
+  </div>
 
   <section class="intro">
     <h1><span data-zh>我做东西。</span><span data-en>I make things.</span></h1>
+
+    <svg class="stroke" viewBox="0 0 220 14" fill="none" aria-hidden="true" preserveAspectRatio="none">
+      <path d="M2 9.4 C 38 4.2, 72 11.2, 110 7.1 C 148 3.1, 182 9.6, 218 5.2"
+        stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/>
+    </svg>
+
     <p>
       <span data-zh>多半是讲解性的东西：把一件复杂的事拆开，画出来，讲到一个十岁小孩也能跟上。</span>
-      <span data-en>Mostly explanatory ones: take something complicated apart, draw it, and get it clear
-        enough that a ten-year-old could follow.</span>
+      <span data-en>Mostly things that explain: take something complicated apart, draw it, and get it
+        clear enough that a ten-year-old could follow.</span>
     </p>
-    <p class="sub">
+    <p>
       <span data-zh>有时候做出来的是片子，有时候是工具，有时候是让工具自己去做片子。</span>
-      <span data-en>Sometimes the thing is a film. Sometimes it's a tool. Sometimes it's a tool that
-        makes the films itself.</span>
+      <span data-en>Sometimes the thing is a film. Sometimes a tool. Sometimes a tool that makes the
+        films itself.</span>
     </p>
   </section>
 
-  <hr class="rule">
+  <div class="hang">
 
-  <ul class="work">
-    <li>
-      <a class="card" href="https://boheling.github.io/storyshot-gallery/">
-        <div class="head">
-          <svg class="mark" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-            <rect x="2.5" y="6.5" width="29" height="21" rx="2.5" stroke="currentColor" stroke-width="2"/>
-            <path d="M13 12.5 L23 17 L13 21.5 Z" fill="currentColor"/>
-          </svg>
-          <span class="ttl"><span data-zh>放映间</span><span data-en>The Screening Room</span></span>
-        </div>
-        <p>
-          <span data-zh>二十多部讲解片，从 CRISPR 筛选、mRNA 癌症疫苗，到大航海时代的旗帜到底是给谁看的。
-            每一部都附分镜、来源和制作手记 —— 包括做错的地方。</span>
-          <span data-en>Two dozen explainers, from CRISPR screens and mRNA cancer vaccines to who the flag
-            was actually for in the age of exploration. Each one ships with its storyboard, its sources
-            and the production notes — including what went wrong.</span>
-        </p>
-        <span class="meta" data-zh>中文 / English · 分镜与手记全部公开</span>
-        <span class="meta" data-en>Chinese and English · storyboards and notes all public</span>
+    <figure class="work work--films">
+      <a href="https://boheling.github.io/storyshot-gallery/">
+        <img class="frame" src="assets/plate-films.jpg" width="1600" height="900"
+             alt="《三体问题》里的一帧：两条从几乎相同起点出发的轨道，其中一颗星被甩出了整个系统。">
+        <figcaption class="label">
+          <h2><span data-zh>放映间</span><span data-en>The Screening Room</span></h2>
+          <p>
+            <span data-zh>二十多部讲解片。CRISPR 筛选、mRNA 癌症疫苗、大航海时代的旗帜到底是给谁看的。
+              每一部都带着分镜、来源，和我先做错了的地方。</span>
+            <span data-en>Two dozen films that explain things. CRISPR screens, mRNA cancer vaccines,
+              who the flag was actually for in the age of exploration. Each one comes with its
+              storyboard, its sources, and the parts I got wrong first.</span>
+          </p>
+          <span class="where" data-zh>中文和英文都有</span>
+          <span class="where" data-en>In Chinese and English</span>
+        </figcaption>
       </a>
-    </li>
+    </figure>
 
-    <li>
-      <a class="card" href="https://github.com/boheling/storyshot">
-        <div class="head">
-          <svg class="mark" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-            <path d="M5 26 L5 9 A2 2 0 0 1 7 7 L27 7 A2 2 0 0 1 29 9 L29 26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M2 26 h30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M11 19 l4-4 -4-4 M18 20 h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span class="ttl">Storyshot</span>
-        </div>
-        <p>
-          <span data-zh>一个让编程 agent 做视频的工具。你用一句话说要什么，它规划、写动画、渲染、
-            回看自己做出来的东西、再修。装进 agent 只要一行命令。</span>
-          <span data-en>A tool that lets a coding agent make video. You ask in one sentence; it plans,
-            writes the animation, renders, looks at what it made, and fixes it. One line to install
-            into your agent.</span>
-        </p>
-        <span class="meta" data-zh>开源 · npx -y storyshot setup claude</span>
-        <span class="meta" data-en>Open source · npx -y storyshot setup claude</span>
+    <figure class="work work--storyshot">
+      <a href="https://github.com/boheling/storyshot">
+        <img class="frame" src="assets/plate-storyshot.jpg" width="1400" height="788"
+             alt="《没有地板的办公室》结尾：屋里的人隔着擦干净的玻璃，向外面吊在绳子上的擦窗工举手。">
+        <figcaption class="label">
+          <h2>Storyshot</h2>
+          <p>
+            <span data-zh>一个让编程 agent 做视频的工具。你说一句话，它规划、画动画、渲染，
+              然后回头看自己做出来的东西，再改。</span>
+            <span data-en>A tool that lets a coding agent make video. You ask in a sentence; it
+              plans, draws, renders, then looks at what it made and fixes it.</span>
+          </p>
+          <span class="where" data-zh>开源，装进 agent 只要一行</span>
+          <span class="where" data-en>Open source, one line to install</span>
+        </figcaption>
       </a>
-    </li>
+    </figure>
 
-    <li>
-      <a class="card" href="helix-field-lab/">
-        <div class="head">
-          <svg class="mark" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-            <path d="M11 4 C11 12, 23 12, 23 17 C23 22, 11 22, 11 30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M23 4 C23 12, 11 12, 11 17 C11 22, 23 22, 23 30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M13 9 h8 M12.5 24.5 h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".65"/>
-          </svg>
-          <span class="ttl">Helix Field Lab</span>
-        </div>
-        <p>
-          <span data-zh>一座塞进 9.6 米 C 型房车的自动化分子实验室，16 套系统。可以剖开看、透视看、
-            绕着看；点任意一台仪器都有规格表；四条带旁白的流程把整套操作走完。</span>
-          <span data-en>An automated molecular lab built into a 9.6 m class C RV — 16 systems, seen in
-            cutaway, in X-ray, or from orbit. Click any instrument for its spec sheet; four narrated
-            workflows walk the whole procedure end to end.</span>
-        </p>
-        <span class="meta" data-zh>可交互 3D · 中英双语旁白</span>
-        <span class="meta" data-en>Interactive 3D · narrated in English and Chinese</span>
+    <figure class="work work--lab">
+      <a href="helix-field-lab/">
+        <img class="frame" src="assets/plate-lab.jpg" width="1500" height="815"
+             alt="Helix Field Lab 的剖面视图：一辆房车被剖开，露出里面编号的十六套仪器。">
+        <figcaption class="label">
+          <h2>Helix Field Lab</h2>
+          <p>
+            <span data-zh>一座装进 9.6 米房车的自动化分子实验室。剖开看，透视看，绕着看；
+              点任何一台仪器都有规格表，四条带旁白的流程把整套操作走完。</span>
+            <span data-en>An automated molecular lab built into a 9.6-metre RV. Open it up, see
+              through it, walk around it; click any instrument for its spec sheet, and four narrated
+              workflows walk the whole procedure.</span>
+          </p>
+          <span class="where" data-zh>可交互的 3D，中英双语</span>
+          <span class="where" data-en>Interactive 3D, in both languages</span>
+        </figcaption>
       </a>
-    </li>
-  </ul>
+    </figure>
 
-  <footer>
-    <span data-zh>更多在 </span><span data-en>More at </span><a href="https://github.com/boheling">github.com/boheling</a>
-  </footer>
+  </div>
+
+  <div class="foot">
+    <span data-zh>其余的都在 <a href="https://github.com/boheling">github.com/boheling</a>。</span>
+    <span data-en>Everything else is at <a href="https://github.com/boheling">github.com/boheling</a>.</span>
+  </div>
 
 </div>
 
 <script>
-  // Language is a URL parameter first (so a link can carry it), then whatever was chosen
-  // last, then the browser's own preference. No framework, no build step: the page ships
-  // both languages and shows one.
-  const btns = document.querySelectorAll("[data-set-lang]");
+  // Both languages ship in the markup; one is shown. ?lang= wins, then whatever was
+  // chosen last, then the browser's own preference.
+  const buttons = document.querySelectorAll("[data-set-lang]");
   function apply(lang, remember) {
     const l = lang === "en" ? "en" : "zh";
     document.documentElement.lang = l;
-    btns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setLang === l)));
+    buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setLang === l)));
     if (remember) { try { localStorage.setItem("lang", l); } catch (e) {} }
   }
   const fromURL = new URLSearchParams(location.search).get("lang");
@@ -194,7 +292,7 @@
   try { saved = localStorage.getItem("lang"); } catch (e) {}
   const fromBrowser = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
   apply(fromURL || saved || fromBrowser, false);
-  btns.forEach((b) => b.addEventListener("click", () => apply(b.dataset.setLang, true)));
+  buttons.forEach((b) => b.addEventListener("click", () => apply(b.dataset.setLang, true)));
 </script>
 </body>
 </html>
