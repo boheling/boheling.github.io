@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>boheling</title>
-<meta name="description" content="倒腾点有意思的东西，多半是讲解类的。 / Tinkering with interesting things, mostly the explaining kind.">
+<meta name="description" content="Tinkering with interesting things, mostly the explaining kind. / 倒腾点有意思的东西，多半是讲解类的。">
 <link rel="icon" href="assets/favicon.svg">
 <meta property="og:title" content="boheling">
-<meta property="og:description" content="倒腾点有意思的东西，多半是讲解类的。 / Tinkering with interesting things, mostly the explaining kind.">
+<meta property="og:description" content="Tinkering with interesting things, mostly the explaining kind. / 倒腾点有意思的东西，多半是讲解类的。">
 <meta property="og:image" content="https://boheling.github.io/assets/plate-films.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -195,8 +195,8 @@
   <div class="top">
     <div class="sig"><a href="/">boheling</a></div>
     <div class="lang" role="group" aria-label="Language / 语言">
-      <button type="button" data-set-lang="zh" aria-pressed="true">中文</button>
-      <button type="button" data-set-lang="en" aria-pressed="false">English</button>
+      <button type="button" data-set-lang="zh" aria-pressed="false">中文</button>
+      <button type="button" data-set-lang="en" aria-pressed="true">English</button>
     </div>
   </div>
 
@@ -288,8 +288,7 @@
 </div>
 
 <script>
-  // Both languages ship in the markup; one is shown. ?lang= wins, then whatever was
-  // chosen last, then the browser's own preference.
+  // Both languages ship in the markup; one is shown.
   const buttons = document.querySelectorAll("[data-set-lang]");
   function apply(lang, remember) {
     const l = lang === "en" ? "en" : "zh";
@@ -300,8 +299,8 @@
   const fromURL = new URLSearchParams(location.search).get("lang");
   let saved = null;
   try { saved = localStorage.getItem("lang"); } catch (e) {}
-  const fromBrowser = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
-  apply(fromURL || saved || fromBrowser, false);
+  // English by default. A ?lang= in the link wins, then whatever was chosen last.
+  apply(fromURL || saved || "en", false);
   buttons.forEach((b) => b.addEventListener("click", () => apply(b.dataset.setLang, true)));
 </script>
 </body>
