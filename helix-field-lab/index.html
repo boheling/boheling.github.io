@@ -1,0 +1,1506 @@
+<title>Helix Field Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGL viewport, floating instrument-console panels (workflows left, spec sheet right, run bar bottom). */
+:root{
+  --bg:#0b1117;
+  --panel:rgba(13,20,27,.9);
+  --panel-solid:#0f171e;
+  --line:rgba(150,185,205,.16);
+  --fg:#e3ebf0;
+  --muted:#8b9dab;
+  --accent:#f2a33a;
+  --accent-ink:#1d1305;
+  --cool:#5cc6d6;
+  --ok:#5fd08f;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --gutter-l:max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r:max(16px, env(safe-area-inset-right, 0px));
+  color-scheme:dark;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+#scene{position:fixed;inset:0;z-index:0}
+#scene canvas{display:block;touch-action:none;outline:none}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+button{font:inherit;color:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- device labels ---- */
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:6px;
+  background:rgba(10,16,22,.78);border:1px solid var(--line);border-radius:999px;padding:2px 9px 2px 2px;
+  cursor:pointer;white-space:nowrap;transform:translate(-50%,-50%);transition:opacity .2s,border-color .2s;font-size:12px}
+.lbl b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#26323d;
+  font:500 11px/1 var(--f-mono);font-variant-numeric:tabular-nums;color:var(--fg)}
+.lbl span{color:var(--fg);opacity:.9}
+.lbl:hover,.lbl.on{border-color:var(--accent)}
+.lbl.on b,.lbl.cur b{background:var(--accent);color:var(--accent-ink)}
+.lbl.cur{border-color:var(--accent);box-shadow:0 0 0 3px rgba(242,163,58,.18)}
+.lbl.dim{opacity:.22}
+.lbl.compact span{display:none}
+.lbl.compact{padding:2px}
+.lbl.compact:hover span,.lbl.compact.on span,.lbl.compact.cur span{display:inline}
+.lbl.compact:hover,.lbl.compact.on,.lbl.compact.cur{padding-right:9px}
+body.nolabels .lbl{display:none}
+
+/* ---- top bar ---- */
+.topbar{position:fixed;z-index:5;top:12px;left:var(--gutter-l);right:var(--gutter-r);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;pointer-events:none}
+.brand{pointer-events:auto;display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px 8px 10px;backdrop-filter:blur(10px)}
+.brand svg{flex:none}
+.brand h1{margin:0;font:700 21px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase}
+.brand p{margin:3px 0 0;color:var(--muted);font:400 11.5px/1.2 var(--f-mono);letter-spacing:.02em}
+.tools{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;backdrop-filter:blur(10px)}
+.seg button{border:0;background:transparent;padding:6px 11px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:500}
+.seg button[aria-pressed="true"]{background:#24303b;color:var(--fg)}
+.seg button:hover{color:var(--fg)}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:500;backdrop-filter:blur(10px)}
+.btn:hover{border-color:rgba(242,163,58,.6)}
+.btn[aria-pressed="true"]{color:var(--accent)}
+
+/* ---- panels ---- */
+.panel{position:fixed;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(12px);
+  display:flex;flex-direction:column;min-height:0;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+#left{left:var(--gutter-l);top:84px;width:330px;max-height:calc(100% - 100px)}
+#info{right:var(--gutter-r);top:84px;width:370px;max-height:calc(100% - 100px)}
+.tabs{display:flex;gap:2px;padding:6px;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:7px;cursor:pointer;color:var(--muted);
+  font:600 13px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+.tabs button[aria-selected="true"]{background:#1e2933;color:var(--fg)}
+.tabs .tg{flex:none;width:34px;font:500 14px/1 var(--f-mono);letter-spacing:0}
+#left.collapsed .scroll{display:none}
+#left.collapsed .tabs{border-bottom:0}
+#left.collapsed .tabs button[aria-selected="true"]{background:transparent;color:var(--muted)}
+body.zen #left, body.zen #info, body.zen .hint{display:none}
+.scroll{overflow:auto;min-height:0;padding:12px;overscroll-behavior:contain}
+.scroll::-webkit-scrollbar{width:8px}.scroll::-webkit-scrollbar-thumb{background:#26323d;border-radius:8px}
+
+.wf-card{display:block;width:100%;text-align:left;background:#121c25;border:1px solid var(--line);border-radius:9px;padding:11px 12px;cursor:pointer;margin-bottom:8px}
+.wf-card:hover{border-color:rgba(242,163,58,.55);background:#15212b}
+.wf-card h3{margin:0 0 3px;font:600 17px/1.15 var(--f-display);letter-spacing:.01em}
+.wf-card p{margin:0 0 8px;color:var(--muted);font-size:12.5px}
+.meta{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;font:500 11px/1 var(--f-mono);color:var(--fg);background:#1c2731;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-variant-numeric:tabular-nums}
+.chip i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.intro-note{color:var(--muted);font-size:12px;margin:2px 2px 12px}
+
+.wf-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.back{border:1px solid var(--line);background:#16212a;border-radius:7px;padding:5px 9px;cursor:pointer;font-size:12px;color:var(--muted)}
+.back:hover{color:var(--fg)}
+.wf-title{margin:4px 0 4px;font:700 22px/1.1 var(--f-display);text-wrap:balance}
+.wf-blurb{margin:0 0 10px;color:var(--muted);font-size:13px}
+ol.steps{list-style:none;margin:12px 0 0;padding:0;counter-reset:s;position:relative}
+ol.steps li{position:relative;display:grid;grid-template-columns:26px 1fr;gap:10px;padding:8px 8px 8px 4px;border-radius:8px;cursor:pointer}
+ol.steps li:hover{background:#15202a}
+ol.steps li::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  border:1px solid #35424e;font:500 11px/1 var(--f-mono);color:var(--muted);background:var(--panel-solid);z-index:1}
+ol.steps li::after{content:"";position:absolute;left:16px;top:32px;bottom:-8px;width:1px;background:#2b3742}
+ol.steps li:last-child::after{display:none}
+ol.steps li.done::before{background:#22303b;color:var(--fg);border-color:#4b5a67}
+ol.steps li.cur{background:rgba(242,163,58,.1)}
+ol.steps li.cur::before{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.st-a{font-weight:600;font-size:13.5px;line-height:1.25}
+.st-d{color:var(--muted);font-size:12px;margin-top:2px}
+.st-d em{font-style:normal;font-family:var(--f-mono);font-size:11px;color:var(--cool)}
+.st-x{font-size:12px;color:#b9c7d1;margin-top:4px;display:none}
+ol.steps li.cur .st-x{display:block}
+
+.eq-item{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;padding:7px 6px;cursor:pointer}
+.eq-item:hover,.eq-item.on{background:#16212b}
+.eq-item b{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;background:#1f2a34;font:500 11.5px/1 var(--f-mono)}
+.eq-item.on b{background:var(--accent);color:var(--accent-ink)}
+.eq-item .nm{font-weight:500;font-size:13.5px;line-height:1.2}
+.eq-item .ct{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11.5px;margin-top:2px}
+.eq-item .ct i{width:7px;height:7px;border-radius:50%}
+.eq-group{font:600 11px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:12px 6px 4px}
+.eq-group:first-child{margin-top:2px}
+
+/* info panel */
+.info-top{display:flex;align-items:flex-start;gap:12px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+.info-num{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font:500 15px/1 var(--f-mono)}
+.info-top h2{margin:2px 0 4px;font:700 23px/1.05 var(--f-display);text-wrap:balance}
+.cat{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.cat i{width:7px;height:7px;border-radius:50%}
+.close{margin-left:auto;flex:none;border:1px solid var(--line);background:#16212a;border-radius:7px;width:30px;height:30px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+.close:hover{color:var(--fg)}
+.info-body p.lead{margin:0 0 14px;font-size:13.5px;line-height:1.55;max-width:62ch}
+.info-body h4{margin:16px 0 8px;font:600 12px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.info-body h4:first-of-type{margin-top:4px}
+dl.specs{margin:0;display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);border-top:1px solid var(--line)}
+dl.specs dt,dl.specs dd{margin:0;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;min-width:0}
+dl.specs dt{color:var(--muted);padding-right:10px}
+dl.specs dd{font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+ul.caps{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+ul.caps li{position:relative;padding-left:16px;font-size:13px}
+ul.caps li::before{content:"";position:absolute;left:2px;top:7px;width:6px;height:6px;border:1.5px solid var(--cool);border-radius:1px;transform:rotate(45deg)}
+.used{display:flex;flex-wrap:wrap;gap:6px}
+.used button{cursor:pointer}
+.used button:hover{border-color:var(--accent)}
+.status-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;font:500 11.5px/1 var(--f-mono);color:var(--ok)}
+.status-row i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(95,208,143,.18);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* run bar */
+#runbar{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom, 0px));width:min(660px, calc(100% - 32px - 700px));min-width:420px;padding:12px 14px}
+.rb-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:500 11.5px/1 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.rb-top b{color:var(--accent);font-weight:500}
+#rbTitle{margin:6px 0 2px;font:600 19px/1.15 var(--f-display)}
+#rbDetail{color:#b9c7d1;font-size:12.5px;min-height:18px}
+.rb-track{display:flex;gap:3px;margin:10px 0 10px}
+.rb-track span{flex:1;height:5px;border-radius:3px;background:#24303a;position:relative;overflow:hidden;cursor:pointer}
+.rb-track span.done{background:#5b6b78}
+.rb-track span i{position:absolute;inset:0 auto 0 0;background:var(--accent);width:0}
+.rb-ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ib{display:grid;place-items:center;width:34px;height:32px;border-radius:8px;border:1px solid var(--line);background:#16212a;cursor:pointer}
+.ib:hover{border-color:rgba(242,163,58,.6)}
+.ib.play{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ib svg{width:15px;height:15px;fill:currentColor}
+.spd{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:4px}
+.spd button{border:0;background:#16212a;padding:7px 8px;cursor:pointer;font:500 11.5px/1 var(--f-mono);color:var(--muted)}
+.spd button[aria-pressed="true"]{background:#26323d;color:var(--fg)}
+.ib.voice[aria-pressed="true"]{color:var(--accent);border-color:rgba(242,163,58,.55)}
+.ib.voice[aria-pressed="false"]{color:var(--muted)}
+#rbSub{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--fg);min-height:20px}
+#rbSub[hidden]{display:none}
+#rbSub .said{color:var(--fg)}
+#rbSub .todo{color:#6f8090}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-left:auto;cursor:pointer;user-select:none}
+.chk input{accent-color:var(--accent)}
+.rb-exit{border:1px solid var(--line);background:transparent;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px;color:var(--muted)}
+.rb-exit:hover{color:var(--fg)}
+
+.hint{position:fixed;z-index:3;right:var(--gutter-r);bottom:calc(14px + env(safe-area-inset-bottom, 0px));color:var(--muted);font:400 11px/1.4 var(--f-mono);text-align:right;pointer-events:none;max-width:260px}
+.hint b{color:var(--fg);font-weight:500}
+#loading{position:fixed;inset:0;display:grid;place-items:center;z-index:10;background:var(--bg);font:500 12px var(--f-mono);color:var(--muted);transition:opacity .4s}
+
+@media (max-width: 1180px){
+  #runbar{width:auto;min-width:0;left:calc(var(--gutter-l) + 346px);right:var(--gutter-r);transform:none}
+  .hint{display:none}
+}
+@media (max-width: 820px){
+  .topbar{top:8px}
+  .brand{padding:6px 10px}
+  .brand h1{font-size:17px}
+  .brand p{display:none}
+  .seg button{padding:5px 8px;font-size:12px}
+  .btn{padding:6px 9px;font-size:12px}
+  #left{top:auto;left:var(--gutter-l);right:var(--gutter-r);width:auto;bottom:calc(10px + env(safe-area-inset-bottom, 0px));max-height:38%}
+  #left.collapsed .scroll{display:none}
+  #info{top:auto;left:var(--gutter-l);right:var(--gutter-r);width:auto;bottom:calc(10px + env(safe-area-inset-bottom, 0px));max-height:58%;z-index:6}
+  #runbar{left:var(--gutter-l);right:var(--gutter-r);top:auto;bottom:calc(38% + 18px);transform:none;width:auto;min-width:0;padding:10px 12px}
+  #runbar.lifted{bottom:calc(58px + env(safe-area-inset-bottom, 0px))}
+  .chk span{display:none}
+}
+@media (prefers-reduced-motion: reduce){ .status-row i{animation:none} }
+</style>
+
+<div id="scene"></div>
+<div id="labels"></div>
+<div id="loading">Loading 3D lab…</div>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#16212a" stroke="#2c3a46"/><path d="M11 6c0 7 12 8 12 14s-12 7-12 8M23 6c0 7-12 8-12 14s12 7 12 8" stroke="#f2a33a" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M13 10h8M12.5 17h9M13 24h8" stroke="#5cc6d6" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <div>
+      <h1>Helix Field Lab</h1>
+      <p>Automated molecular lab · 9.6 m class C RV · 16 systems</p>
+    </div>
+  </div>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="View mode">
+      <button id="mCut" aria-pressed="true" title="Open roof and the wall facing you">Cutaway</button>
+      <button id="mX" aria-pressed="false" title="See-through shell, solar and battery visible">X-ray</button>
+      <button id="mExt" aria-pressed="false" title="Closed vehicle">Exterior</button>
+    </div>
+    <button class="btn" id="bLabels" aria-pressed="true">Labels</button>
+    <button class="btn" id="bSpin" aria-pressed="false">Orbit</button>
+    <button class="btn" id="bZen" aria-pressed="false" title="Hide side panels (H)">Hide panels</button>
+    <button class="btn" id="bReset">Reset view</button>
+  </div>
+</header>
+
+<aside id="left" class="panel" aria-label="Workflows and equipment">
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tWf" aria-selected="true">Workflows</button>
+    <button role="tab" id="tEq" aria-selected="false">Equipment</button>
+    <button class="tg" id="tCol" aria-label="Collapse panel" title="Collapse panel">–</button>
+  </div>
+  <div class="scroll" id="leftBody"></div>
+</aside>
+
+<aside id="info" class="panel" hidden aria-live="polite">
+  <div class="info-top">
+    <div class="info-num" id="iNum">01</div>
+    <div style="min-width:0">
+      <h2 id="iName"></h2>
+      <span class="cat" id="iCat"></span>
+    </div>
+    <button class="close" id="iClose" aria-label="Close details">✕</button>
+  </div>
+  <div class="scroll info-body" id="iBody"></div>
+</aside>
+
+<section id="runbar" class="panel" hidden aria-label="Workflow playback">
+  <div class="rb-top"><span id="rbCount">STEP 1 / 12</span><span><b id="rbTime">10 min</b> real time · <span id="rbDev"></span></span></div>
+  <div id="rbTitle"></div>
+  <div id="rbDetail"></div>
+  <div id="rbSub" lang="zh-CN" hidden></div>
+  <div class="rb-track" id="rbTrack"></div>
+  <div class="rb-ctrl">
+    <button class="ib" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+    <button class="ib play" id="bPlay" aria-label="Pause"><svg viewBox="0 0 16 16" id="playIco"><path d="M4 2h3v12H4zM9 2h3v12H9z"/></svg></button>
+    <button class="ib" id="bNext" aria-label="Next step"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM2 2v12l8-6z"/></svg></button>
+    <div class="spd" role="group" aria-label="Playback speed">
+      <button data-s="0.5" aria-pressed="false">0.5×</button>
+      <button data-s="1" aria-pressed="true">1×</button>
+      <button data-s="2" aria-pressed="false">2×</button>
+    </div>
+    <div class="spd" id="voiceSel" role="group" aria-label="Narration" title="Narration (V)">
+      <button data-v="off" aria-pressed="true" aria-label="Narration off"><svg viewBox="0 0 16 16" width="13" height="13" style="vertical-align:-2px;fill:currentColor"><path d="M2 6h3l4-3v10l-4-3H2z"/><path d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></button>
+      <button data-v="en" aria-pressed="false">EN</button>
+      <button data-v="zh" aria-pressed="false" lang="zh-CN">中文</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="cFollow" checked> <span>Follow camera</span></label>
+    <button class="rb-exit" id="bExit">Exit</button>
+  </div>
+</section>
+
+<div class="hint"><b>Drag</b> rotate · <b>Scroll</b> zoom · <b>Right-drag</b> pan<br>Click any instrument for its spec sheet</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+/* =========================================================
+   DATA
+   ========================================================= */
+const CATS = {
+  'Sample management':'#8fd8ff',
+  'Sample prep':'#9fe6b0',
+  'Automation':'#f2a33a',
+  'Amplification':'#ff8f7a',
+  'Quality control':'#c7a6ff',
+  'Sequencing':'#5cc6d6',
+  'Analytical chemistry':'#ffd36b',
+  'Data & analysis':'#7aa7ff',
+  'Infrastructure':'#a8b6c2'
+};
+const DEVICES = [
+ {id:'cold', name:'Cold Chain Storage', cat:'Sample management',
+  intro:'An upright −80 °C freezer and a 4 °C reagent refrigerator mounted against the rear bulkhead on vibration isolators. They hold incoming specimens, extracted nucleic acids, enzymes and sequencing kits for multi-week deployments.',
+  specs:[['Freezer range','−86 to −40 °C'],['Fridge range','2 to 8 °C'],['Capacity','2 × 120 L (≈ 10,000 × 2 mL tubes)'],['Hold-over','8 h above −70 °C with power off'],['Power','350 W average, inverter-fed'],['Monitoring','Dual probes, door sensors, satcom alarms']],
+  caps:['Barcode-indexed rack positions','Continuous temperature log for chain of custody','Alarm escalation over satcom','Dry-ice backup compartment']},
+ {id:'bsc', name:'Biosafety Cabinet', cat:'Sample management',
+  intro:'Class II cabinet where every specimen is first opened. HEPA-filtered downflow protects the operator, the sample and the rest of the vehicle. A 2D barcode reader logs each tube into the LIMS before it goes anywhere else.',
+  specs:[['Class','II, Type A2'],['Work opening','1.0 m wide, 200 mm sash'],['Inflow velocity','0.45 m/s'],['Filtration','Dual HEPA, 99.995 % at 0.3 µm'],['Decontamination','UV-C 254 nm + H₂O₂ vapour port'],['Noise','< 58 dB(A)']],
+  caps:['BSL-2 specimen handling','Inactivation in lysis buffer before transfer','2D barcode scan and LIMS check-in','Pass-through hatch to the transfer arm']},
+ {id:'extract', name:'Nucleic Acid Extractor', cat:'Sample prep',
+  intro:'Walk-away purification of DNA and RNA from swabs, blood, stool, soil or water concentrates. Magnetic rods carry beads through lysis, binding, wash and elution wells, so no vacuum manifold is needed.',
+  specs:[['Throughput','1–96 samples per run'],['Run time','20–40 min'],['Input volume','50–1,000 µL'],['Elution volume','50–200 µL'],['Recovery','typically 85–95 %'],['Contamination control','UV lamp, HEPA, tip-comb sleeves']],
+  caps:['Viral RNA, gDNA, total NA and cfDNA protocols','Inhibitor removal for environmental samples','Plates loaded and unloaded by the arm','Run record linked to each sample barcode']},
+ {id:'centrifuge', name:'Refrigerated Centrifuge', cat:'Sample prep',
+  intro:'Swing-bucket rotor for plates and tubes. Gimballed mounting and active imbalance detection keep it safe to run while the vehicle is parked on uneven ground.',
+  specs:[['Max force','15,000 × g tubes · 4,000 × g plates'],['Temperature','−10 to 40 °C'],['Rotor','4 × 96-well plates or 24 × 2 mL'],['Imbalance','auto-detect, 10 % tolerance'],['Interlock','level sensor, lid lock']],
+  caps:['Pellet cells and debris','Plate spin-down before sealing','Plasma separation','Clarify water samples']},
+ {id:'lh', name:'8-Channel Liquid Handler', cat:'Automation',
+  intro:'The workhorse of the lab. A three-axis gantry with eight independent pipetting channels does normalisation, reaction set-up, library prep and bead clean-ups that would take hours by hand.',
+  specs:[['Channels','8 independent, 1–1,000 µL'],['Precision','CV < 1 % at 10 µL'],['Deck','12 SBS positions'],['On-deck modules','heater-shaker, magnet, 4 °C block'],['Liquid detection','capacitive + pressure'],['Audit','21 CFR Part 11 run log']],
+  caps:['Normalisation and cherry-picking','PCR and dPCR reaction set-up','NGS library prep and bead clean-up','Solid-phase extraction for LC-MS']},
+ {id:'tc', name:'Thermal Cycler & qPCR', cat:'Amplification',
+  intro:'A 96-well gradient thermal cycler for amplicon and index PCR sits beside a five-colour real-time instrument that screens samples by Ct before anyone spends a sequencing run on them.',
+  specs:[['Format','96 × 0.2 mL, both units'],['Ramp rate','5 °C/s block'],['Uniformity','± 0.2 °C'],['qPCR channels','5 (FAM, HEX, ROX, Cy5, Cy5.5)'],['Sensitivity','1 copy per reaction'],['qPCR run','≈ 40 min, 40 cycles']],
+  caps:['RT-qPCR pathogen screening','Tiled amplicon and index PCR','Gradient optimisation','High-resolution melt']},
+ {id:'dpcr', name:'Digital PCR System', cat:'Amplification',
+  intro:'Splits each reaction into about 26,000 nanowell partitions and counts the positives after endpoint PCR. It gives absolute copy numbers without a standard curve, which suits genotyping, copy-number calls and rare targets.',
+  specs:[['Partitions','26,000 per well'],['Plate','24 wells'],['Dynamic range','1–120,000 copies/µL'],['Colour channels','5'],['Precision','CV < 5 % at 1,000 copies'],['Time to result','≈ 2 h']],
+  caps:['Absolute quantification','Rare-allele detection to 0.1 %','Copy-number variation (e.g. CYP2D6)','Wastewater target quantification']},
+ {id:'incubator', name:'Plate Hotel & Incubator', cat:'Automation',
+  intro:'Climate-controlled storage that the transfer arm uses as a buffer. It grows cultures at 37 °C, keeps prepared plates chilled while an instrument is busy, and queues work overnight.',
+  specs:[['Capacity','22 SBS plates'],['Temperature','4–50 °C, two zones'],['Atmosphere','optional 5 % CO₂'],['Access','shuttle with barcode reader'],['Uniformity','± 0.3 °C']],
+  caps:['Overnight bacterial culture','Chilled queuing between instruments','Scheduler-driven plate swaps','Shaking for deep-well cultures']},
+ {id:'fluor', name:'Fluorometer', cat:'Quality control',
+  intro:'Dye-based quantification that measures only double-stranded DNA or RNA, so free nucleotides and contaminants do not inflate the reading. Used for input normalisation and library pooling.',
+  specs:[['dsDNA range','0.005–120 ng/µL'],['Sample volume','1–20 µL'],['Read time','3 s'],['Channels','470 nm, 635 nm'],['Connectivity','results sent to LIMS']],
+  caps:['dsDNA, RNA and protein assays','Library molarity','Pooling calculations']},
+ {id:'frag', name:'Fragment Analyzer', cat:'Quality control',
+  intro:'Measures the size distribution and integrity of DNA, RNA and finished libraries by capillary electrophoresis, catching failed preps before they waste a sequencing run.',
+  specs:[['Capillaries','12'],['Sizing range','35 bp – 60 kb'],['Sizing accuracy','± 5 %'],['Sample input','2 µL'],['Run time','≈ 45 min per 12'],['Metrics','RQN, DIN, molarity']],
+  caps:['Library size QC','RNA integrity','Genomic DNA integrity','Adapter-dimer detection']},
+ {id:'srseq', name:'Short-Read Sequencer', cat:'Sequencing',
+  intro:'Sequencing by synthesis on a patterned flow cell. It delivers high-accuracy paired-end reads for whole-genome, amplicon, targeted-panel and RNA-seq work, typically one run per day.',
+  specs:[['Output','up to 120 Gb per run'],['Reads','up to 400 M'],['Read length','up to 2 × 300 bp'],['Quality','> 85 % of bases ≥ Q30'],['Run time','8–44 h'],['Footprint','0.75 × 0.55 m']],
+  caps:['Viral and bacterial whole genomes','Targeted panels and amplicons','RNA-seq','On-board primary analysis']},
+ {id:'nanopore', name:'Nanopore Sequencer', cat:'Sequencing',
+  intro:'Reads native DNA or RNA as it passes through protein nanopores and streams bases in real time. Long reads close bacterial genomes and resolve structural variants; analysis starts minutes after loading.',
+  specs:[['Flow cell','2,048 channels, 512 active'],['Output','up to 50 Gb per flow cell'],['Read length','> 1 Mb possible'],['Accuracy','> 99 % (Q20+)'],['Time to first data','< 10 min'],['Weight','0.1 kg + compute dock']],
+  caps:['Real-time metagenomics','Adaptive sampling (depletes host reads)','Direct RNA and methylation','Plasmid and genome closure']},
+ {id:'lcms', name:'Compact LC-MS/MS', cat:'Analytical chemistry',
+  intro:'A UHPLC front end feeds a triple-quadrupole mass spectrometer. It quantifies small molecules, toxins, drugs and peptides at trace levels, adding chemistry to the lab’s nucleic-acid view.',
+  specs:[['LC','binary UHPLC, 1,000 bar'],['MS','triple quadrupole, MRM'],['Mass range','m/z 5–2,000'],['Sensitivity','low ng/L for PFAS'],['Polarity switch','< 10 ms'],['Gas','on-board N₂ generator']],
+  caps:['PFAS and pesticides in water','Therapeutic drug monitoring','Targeted proteomics','Mycotoxin screening']},
+ {id:'hpc', name:'Edge Compute Rack', cat:'Data & analysis',
+  intro:'Shock-mounted servers with GPUs process data as it comes off the instruments: basecalling, alignment, assembly, variant calling and reporting. The lab produces answers on site instead of shipping hard drives.',
+  specs:[['CPU','2 × 64 cores'],['GPU','4 × data-centre GPU, 192 GB'],['Memory','1 TB'],['Storage','200 TB NVMe + HDD'],['Pipelines','containerised Nextflow'],['Power','3.2 kW peak']],
+  caps:['Real-time GPU basecalling','Assembly, lineage and phylogenetics','Metagenomic classification','LIMS, scheduler and audit trail']},
+ {id:'arm', name:'Overhead Transfer Arm', cat:'Automation',
+  intro:'A collaborative arm on a ceiling rail that runs the length of the lab. It carries plates and tube racks between instruments, so a workflow runs end to end without anyone moving samples by hand.',
+  specs:[['Rail travel','6.0 m'],['Payload','3 kg'],['Repeatability','± 0.03 mm'],['Gripper','servo, SBS plate and rack fingers'],['Safety','force-limited, light-curtain zones'],['Control','scheduler-integrated']],
+  caps:['Plate and rack transfers','De-lid, re-lid and seal check','Barcode check on every move','Unattended overnight runs']},
+ {id:'power', name:'Power, Climate & Satcom', cat:'Infrastructure',
+  intro:'Roof solar and an under-floor LFP battery keep the instruments on clean power, with shore power or the chassis generator as backup. A flat-panel satellite terminal links the lab to cloud databases and public-health reporting.',
+  specs:[['Solar','3.6 kW roof array'],['Battery','60 kWh LFP, under floor'],['Inverter','15 kW pure sine, < 4 ms UPS'],['HVAC','2 × 4.5 kW, ± 1 °C cabin'],['Satcom','LEO flat panel, ~200 Mbps down'],['Off-grid','≈ 14 h with the full lab running']],
+  caps:['Off-grid operation','Positive-pressure HEPA cabin air','Encrypted data upload','Remote monitoring and control']}
+];
+DEVICES.forEach((d,i)=>d.n=i+1);
+const DMAP = Object.fromEntries(DEVICES.map(d=>[d.id,d]));
+
+const WORKFLOWS = [
+ {id:'outbreak', name:'Outbreak viral genomics', blurb:'Respiratory swabs to lineage report: whole-genome sequencing during a viral outbreak.', tat:'≈ 14 h', samples:'94 swabs + 2 controls',
+  steps:[
+   {d:'cold', a:'Receive and log swabs', t:'10 min', x:'Swabs in transport medium are scanned, logged and held at 4 °C.'},
+   {d:'bsc', a:'Open and inactivate', t:'25 min', x:'Tubes opened under downflow; 200 µL aliquots go into lysis buffer, which inactivates the virus.'},
+   {d:'extract', a:'Extract viral RNA', t:'30 min', x:'Magnetic-bead purification, 50 µL elution into a 96-well plate.'},
+   {d:'tc', a:'RT-qPCR screen', t:'45 min', x:'Samples with Ct < 33 continue; weak positives are flagged.'},
+   {d:'lh', a:'Set up amplicon PCR', t:'40 min', x:'cDNA synthesis and two tiled primer pools, input normalised by Ct.'},
+   {d:'tc', a:'Tiled amplicon PCR', t:'2 h 30 min', x:'35 cycles across ~400 bp amplicons that cover the genome.'},
+   {d:'lh', a:'Library prep and pooling', t:'2 h', x:'Tagmentation, index PCR set-up, bead clean-up and equal-volume pooling.'},
+   {d:'fluor', a:'Quantify the pool', t:'5 min', x:'dsDNA concentration converted to nM for loading.'},
+   {d:'frag', a:'Check fragment size', t:'45 min', x:'Expect a peak near 450 bp and no adapter dimer.'},
+   {d:'srseq', a:'Sequence 2 × 150 bp', t:'8 h', x:'About 25 M read pairs, ≥ 100× coverage per genome.'},
+   {d:'hpc', a:'Assemble and assign lineage', t:'40 min', x:'Demultiplex, consensus genomes, lineage calls and phylogenetic placement.'},
+   {d:'power', a:'Report via satcom', t:'2 min', x:'Genomes and the cluster report upload to the public-health portal.'}
+  ]},
+ {id:'meta', name:'Unknown-pathogen metagenomics', blurb:'Real-time nanopore sequencing to identify an unknown pathogen and its resistance genes.', tat:'≈ 5 h', samples:'12 samples',
+  steps:[
+   {d:'bsc', a:'Receive and lyse', t:'20 min', x:'Each sample is split: half archived, half into bead-beating lysis tubes.'},
+   {d:'centrifuge', a:'Clear the lysate', t:'10 min', x:'Spin down debris after mechanical lysis.'},
+   {d:'extract', a:'Extract total nucleic acid', t:'35 min', x:'DNA and RNA co-purified with inhibitor removal.'},
+   {d:'fluor', a:'Quantify input', t:'5 min', x:'Confirm ≥ 50 ng per sample for rapid barcoding.'},
+   {d:'lh', a:'Rapid barcoding and pooling', t:'25 min', x:'12 transposase barcodes, pooled and bead-cleaned.'},
+   {d:'nanopore', a:'Real-time sequencing', t:'2 h', x:'Adaptive sampling rejects human reads while the run is going.'},
+   {d:'hpc', a:'Basecall and classify', t:'live', x:'GPU basecalling, taxonomic classification and AMR gene search as reads arrive.'},
+   {d:'power', a:'Alert the clinical team', t:'1 min', x:'Preliminary ID and resistance profile pushed over satcom.'}
+  ]},
+ {id:'pgx', name:'Pharmacogenomic genotyping', blurb:'Blood to drug–gene report: digital PCR genotyping of CYP2C19 and CYP2D6.', tat:'≈ 3 h', samples:'24 patients',
+  steps:[
+   {d:'cold', a:'Receive EDTA blood', t:'5 min', x:'Tubes logged and held at 4 °C.'},
+   {d:'bsc', a:'Aliquot whole blood', t:'15 min', x:'200 µL per patient into the lysis plate.'},
+   {d:'extract', a:'Extract genomic DNA', t:'30 min', x:'gDNA eluted in 100 µL.'},
+   {d:'fluor', a:'Quantify DNA', t:'10 min', x:'Normalise every sample to 5 ng/µL.'},
+   {d:'lh', a:'Assemble dPCR reactions', t:'20 min', x:'Allele-specific probes for CYP2C19 *2, *3, *17 plus a CYP2D6 copy-number assay.'},
+   {d:'dpcr', a:'Partition and read', t:'1 h 50 min', x:'26,000 partitions per well; positives counted per allele.'},
+   {d:'hpc', a:'Call genotypes and report', t:'5 min', x:'Diplotype, metaboliser phenotype and a dosing note per patient.'}
+  ]},
+ {id:'water', name:'Drinking-water contaminant screen', blurb:'Targeted LC-MS/MS quantification of PFAS and pesticides in water.', tat:'≈ 4 h', samples:'20 water samples',
+  steps:[
+   {d:'cold', a:'Receive water samples', t:'10 min', x:'Polypropylene bottles logged and kept at 4 °C.'},
+   {d:'centrifuge', a:'Clarify', t:'10 min', x:'Remove particulates before extraction.'},
+   {d:'lh', a:'Solid-phase extraction', t:'1 h 15 min', x:'Spike isotope-labelled standards, then load, wash and elute the SPE plate.'},
+   {d:'incubator', a:'Queue plate, chilled', t:'≈ 30 min', x:'The plate waits at 6 °C until the LC-MS is free.'},
+   {d:'lcms', a:'Run the MRM method', t:'1 h 40 min', x:'40 PFAS and pesticide transitions, 5 min per injection.'},
+   {d:'hpc', a:'Integrate and quantify', t:'10 min', x:'Peak integration against an 8-point calibration curve.'},
+   {d:'power', a:'Upload results', t:'1 min', x:'Results compared with regulatory limits and sent to the water utility.'}
+  ]},
+ {id:'amr', name:'AMR isolate sequencing', blurb:'From bacterial colony to resistance genes, MLST type and outbreak clustering.', tat:'≈ 30 h incl. culture', samples:'16 isolates',
+  steps:[
+   {d:'bsc', a:'Pick colonies', t:'20 min', x:'Colonies picked into liquid medium in a deep-well plate.'},
+   {d:'incubator', a:'Overnight culture', t:'16 h', x:'37 °C with shaking.'},
+   {d:'centrifuge', a:'Pellet cells', t:'10 min', x:'Plate spun at 4,000 × g, supernatant removed.'},
+   {d:'extract', a:'Extract genomic DNA', t:'35 min', x:'Enzymatic plus bead lysis so Gram-positives open too.'},
+   {d:'fluor', a:'Quantify DNA', t:'10 min', x:'Normalise to 0.2 ng/µL for tagmentation.'},
+   {d:'lh', a:'Library prep', t:'1 h 30 min', x:'Tagmentation and index PCR set-up.'},
+   {d:'tc', a:'Index PCR', t:'30 min', x:'12 cycles.'},
+   {d:'frag', a:'Library QC', t:'45 min', x:'Check size distribution before pooling.'},
+   {d:'srseq', a:'Sequence 2 × 150 bp', t:'10 h', x:'≥ 50× coverage per isolate.'},
+   {d:'hpc', a:'Assemble and type', t:'30 min', x:'De novo assembly, MLST, AMR and virulence genes, cgMLST clustering.'}
+  ]}
+];
+
+/* =========================================================
+   THREE SETUP
+   ========================================================= */
+const sceneEl = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+sceneEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1117);
+scene.fog = new THREE.Fog(0x0b1117, 22, 55);
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
+const narrow = () => window.innerWidth < 820;
+const HOME = { t:new THREE.Vector3(-0.6, 0.7, 0), p:new THREE.Vector3(3.6, 6.4, 8.6) };
+const HOME_N = { t:new THREE.Vector3(-0.8, 0.6, 0), p:new THREE.Vector3(4.5, 9.5, 12.5) };
+const home = () => narrow() ? HOME_N : HOME;
+camera.position.copy(home().p);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.copy(home().t);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.0; controls.maxDistance = 26;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.autoRotateSpeed = 0.6;
+
+scene.add(new THREE.HemisphereLight(0xd3e4ff, 0x1a2027, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 1.35);
+sun.position.set(5, 11, 7); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left:-8, right:8, top:7, bottom:-7, near:1, far:32});
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x9ec9ff, 0.35); fill.position.set(-7, 5, -6); scene.add(fill);
+const in1 = new THREE.PointLight(0xfff0dc, 0.55, 5.5); in1.position.set(-2.6, 2.0, 0); scene.add(in1);
+const in2 = new THREE.PointLight(0xfff0dc, 0.55, 5.5); in2.position.set(0.7, 2.0, 0); scene.add(in2);
+
+/* ---------- helpers ---------- */
+const M = (color, o) => new THREE.MeshStandardMaterial(Object.assign({color, roughness:.55, metalness:.08}, o||{}));
+const MB = (color, o) => new THREE.MeshBasicMaterial(Object.assign({color, toneMapped:false}, o||{}));
+const glassM = (op) => M(0xcfe8f2, {transparent:true, opacity:op||0.2, roughness:.05, metalness:0, depthWrite:false});
+function bx(w,h,d,m,x,y,z,p){ const me = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m); me.position.set(x||0,y||0,z||0);
+  const see = m.transparent; me.castShadow = !see; me.receiveShadow = true; if(p) p.add(me); return me; }
+function cy(rt,rb,h,m,x,y,z,p,seg,open){ const me = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||24,1,!!open), m); me.position.set(x||0,y||0,z||0);
+  me.castShadow = !m.transparent; me.receiveShadow = true; if(p) p.add(me); return me; }
+function hitbox(w,h,d,x,y,z,p){ const m = new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}); m.userData.hit = true;
+  const me = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m); me.position.set(x,y,z); p.add(me); return me; }
+const hash = n => { const s = Math.sin(n*12.9898)*43758.5453; return s - Math.floor(s); };
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,k) => a + (b-a)*k;
+const MONO = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+const C = { white:0xeef1f3, off:0xf5f6f6, grey:0xdfe4e8, dark:0x2a3038, darker:0x1a1f25, steel:0xaab3bb, blue:0x3b82c4, amber:0xf2a33a, teal:0x37b3a6 };
+
+const screens = [];
+function scr(w,h,res,draw,p,x,y,z){
+  const cw = res, ch = Math.max(16, Math.round(res*h/w));
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({map:tex, toneMapped:false}));
+  mesh.position.set(x,y,z); p.add(mesh);
+  const s = {ctx, tex, w:cw, h:ch, draw, mesh}; screens.push(s);
+  draw(ctx, 0, cw, ch); tex.needsUpdate = true; return s;
+}
+function sbg(c,w,h,col){ c.fillStyle = col||'#06121a'; c.fillRect(0,0,w,h); }
+function stext(c, txt, x, y, size, col, weight){ c.fillStyle = col||'#e3ebf0'; c.font = (weight||500)+' '+size+'px '+MONO; c.textBaseline = 'middle'; c.fillText(txt, x, y); }
+
+/* ---------- environment ---------- */
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), M(0x141b22, {roughness:.95}));
+ground.rotation.x = -Math.PI/2; ground.position.y = -1.0; ground.receiveShadow = true; scene.add(ground);
+const grid = new THREE.GridHelper(48, 48, 0x22303b, 0x19232c); grid.position.y = -0.995; scene.add(grid);
+[-6.5, 6.5].forEach(x => bx(0.08, 0.005, 5.5, M(0x58646f), x, -0.992, 0.6, scene));
+bx(13, 0.005, 0.08, M(0x58646f), 0, -0.992, -2.1, scene);
+
+/* =========================================================
+   VEHICLE SHELL
+   ========================================================= */
+const shellMats = [];
+function shellMat(color, o){ const m = M(color, o); m.userData.shell = true; m.userData.sb = {op:m.opacity, tr:m.transparent, dw:m.depthWrite}; shellMats.push(m); return m; }
+const shellG = new THREE.Group(); scene.add(shellG);
+const SH = {};
+const markShell = o => o.traverse(c => { if(c.isMesh) c.userData.shell = true; });
+
+// chassis + floor
+bx(9.55, 0.3, 2.25, M(0x20262c, {roughness:.8}), -0.03, -0.25, 0, scene);
+const floor = bx(7.75, 0.1, 2.32, M(0x323a43, {roughness:.85}), -0.93, -0.05, 0, scene);
+bx(6.4, 0.012, 0.95, M(0x262d34, {roughness:.95}), -1.0, 0.006, 0, scene); // aisle mat
+// wheels
+[-3.3, -2.35, 3.65].forEach(x => [-1.05, 1.05].forEach(z => {
+  const w = cy(0.45, 0.45, 0.3, M(0x15181b, {roughness:.9}), x, -0.55, z, scene, 32); w.rotation.x = Math.PI/2;
+  const h = cy(0.22, 0.22, 0.31, M(C.steel, {metalness:.7, roughness:.35}), x, -0.55, z, scene, 20); h.rotation.x = Math.PI/2;
+}));
+
+function wallSide(sign){
+  const g = new THREE.Group();
+  const white = shellMat(0xf2f3f1, {roughness:.5});
+  bx(7.75, 2.42, 0.06, white, -0.935, 1.1, sign*1.18, g);
+  const zo = sign*1.214;
+  bx(7.75, 0.09, 0.008, shellMat(C.amber, {roughness:.45}), -0.935, 0.32, zo, g);
+  bx(7.75, 0.04, 0.008, shellMat(0x2f8f9d, {roughness:.45}), -0.935, 0.42, zo, g);
+  const win = shellMat(0x16222c, {roughness:.12, metalness:.4});
+  [-3.4, -0.4].forEach(x => bx(1.05, 0.42, 0.01, win, x, 1.62, zo, g));
+  // branding
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 160; const k = c.getContext('2d');
+  k.fillStyle = '#1b2530'; k.font = '700 92px "Barlow Semi Condensed", Arial Narrow, sans-serif'; k.textBaseline = 'middle';
+  k.fillText('HELIX FIELD LAB', 10, 62);
+  k.fillStyle = '#5b6873'; k.font = '500 30px "IBM Plex Mono", monospace'; k.fillText('MOBILE MOLECULAR · SEQUENCING · ANALYTICS', 14, 132);
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const brand = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.5), shellMat(0xffffff, {map:tex, transparent:true, roughness:.6}));
+  brand.position.set(-2.0, 0.95, sign*1.216); if(sign < 0) brand.rotation.y = Math.PI; g.add(brand);
+  if(sign > 0){ // entry door on curb side
+    bx(0.85, 1.95, 0.012, shellMat(0xe4e7e6), 2.2, 0.9, 1.217, g);
+    bx(0.45, 0.4, 0.014, win, 2.2, 1.45, 1.22, g);
+    bx(0.04, 0.16, 0.03, shellMat(C.steel, {metalness:.7}), 1.86, 0.95, 1.235, g);
+    bx(0.7, 0.05, 0.32, shellMat(0x4a535c, {metalness:.5}), 2.2, -0.3, 1.36, g);
+  }
+  markShell(g); shellG.add(g); return g;
+}
+SH.far = wallSide(-1); SH.near = wallSide(1);
+SH.rear = new THREE.Group();
+bx(0.06, 2.42, 2.42, shellMat(0xf2f3f1), -4.81, 1.1, 0, SH.rear);
+[-0.95, 0.95].forEach(z => bx(0.02, 0.3, 0.14, shellMat(0xd8312f, {emissive:0x5a0b0b}), -4.845, 0.35, z, SH.rear));
+bx(0.012, 1.9, 0.9, shellMat(0xe4e7e6), -4.845, 0.95, 0, SH.rear);
+markShell(SH.rear); shellG.add(SH.rear);
+SH.roof = new THREE.Group();
+bx(6.85, 0.07, 2.42, shellMat(0xeceeed), -1.42, 2.345, 0, SH.roof); markShell(SH.roof); shellG.add(SH.roof);
+SH.roofF = new THREE.Group();
+bx(0.95, 0.07, 2.42, shellMat(0xeceeed), 2.475, 2.345, 0, SH.roofF); markShell(SH.roofF); shellG.add(SH.roofF);
+SH.bulk = new THREE.Group();
+bx(0.06, 2.42, 2.36, shellMat(0xe9ecec), 2.95, 1.1, 0, SH.bulk); markShell(SH.bulk); shellG.add(SH.bulk);
+// cab
+SH.cab = new THREE.Group();
+(function(){
+  const s = new THREE.Shape();
+  s.moveTo(2.98,-0.1); s.lineTo(4.75,-0.1); s.lineTo(4.78,0.72); s.lineTo(4.48,0.95); s.lineTo(4.05,1.72); s.lineTo(2.98,1.72); s.lineTo(2.98,-0.1);
+  const geo = new THREE.ExtrudeGeometry(s, {depth:2.36, bevelEnabled:false}); geo.translate(0,0,-1.18);
+  const cab = new THREE.Mesh(geo, shellMat(0xf2f3f1, {roughness:.5})); cab.castShadow = true; cab.receiveShadow = true; SH.cab.add(cab);
+  const ws = bx(0.02, 0.9, 2.2, shellMat(0x15212b, {roughness:.08, metalness:.5}), 4.275, 1.34, 0, SH.cab); ws.rotation.z = 0.51;
+  [-1, 1].forEach(sg => { bx(0.75, 0.5, 0.01, shellMat(0x15212b, {roughness:.1, metalness:.4}), 3.55, 1.3, sg*1.185, SH.cab);
+    bx(0.03, 0.12, 0.2, shellMat(0x2a3038), 3.98, 1.1, sg*1.28, SH.cab); });
+  bx(1.42, 0.6, 2.42, shellMat(0xf2f3f1, {roughness:.5}), 3.68, 2.02, 0, SH.cab); // over-cab
+  bx(0.01, 0.2, 1.6, shellMat(0x15212b, {roughness:.1}), 4.395, 2.02, 0, SH.cab);
+  bx(0.03, 0.1, 1.3, shellMat(0x1d2329), 4.78, 0.42, 0, SH.cab); // grille
+  [-0.85, 0.85].forEach(z => bx(0.02, 0.1, 0.24, MB(0xfff4d8), 4.79, 0.55, z, SH.cab));
+  [-1, 1].forEach(z => bx(1.75, 0.09, 0.008, shellMat(C.amber), 3.85, 0.32, z*1.185, SH.cab));
+  bx(0.3, 0.16, 2.4, M(0x1d2329), 4.7, -0.12, 0, SH.cab); // bumper
+})();
+markShell(SH.cab); shellG.add(SH.cab);
+
+// roof structure (always visible: ribs + rail beams + light strips)
+const frameM = M(0x8e99a3, {metalness:.55, roughness:.4});
+[-1.18, 1.18].forEach(z => bx(7.75, 0.06, 0.06, frameM, -0.935, 2.3, z, scene));
+for(let x = -4.6; x <= 2.0; x += 1.1) bx(0.05, 0.05, 2.36, frameM, x, 2.29, 0, scene);
+[-0.5, 0.5].forEach(z => bx(6.3, 0.012, 0.07, MB(0xfff3df), -1.1, 2.255, z, scene));
+
+// counters
+function counter(x0, x1, zc){
+  const L = x1 - x0, xc = (x0 + x1)/2;
+  bx(L, 0.86, 0.58, M(0x44505c, {roughness:.6}), xc, 0.43, zc, scene);
+  bx(L+0.02, 0.05, 0.64, M(0xc9d1d7, {roughness:.35}), xc, 0.895, zc, scene);
+  const face = zc < 0 ? zc + 0.292 : zc - 0.292;
+  for(let x = x0 + 0.5; x < x1 - 0.1; x += 0.5) bx(0.008, 0.78, 0.004, M(0x2b333b), x, 0.43, face, scene);
+  bx(L, 0.03, 0.004, M(0x2b333b), xc, 0.82, face, scene);
+}
+counter(-4.0, 2.1, -0.83);
+counter(-2.72, 1.5, 0.83);
+
+/* =========================================================
+   DEVICE BUILDERS  (local frame: footprint centred at origin, front = +z)
+   ========================================================= */
+const B = {};
+
+B.cold = () => {
+  const g = new THREE.Group();
+  [[0.8, 0, '#8fd8ff'], [-0.8, 1, '#9fe6b0']].forEach(([x, i, col]) => {
+    bx(0.64, 1.84, 0.62, M(C.white), x, 0.92, 0, g);
+    bx(0.6, 1.46, 0.03, M(i ? 0xe2e8ec : C.off, {roughness:.35}), x, 0.8, 0.325, g);
+    bx(0.6, 0.3, 0.03, M(C.dark), x, 1.68, 0.325, g);
+    bx(0.025, 0.55, 0.05, M(C.steel, {metalness:.8, roughness:.3}), x + 0.24, 0.95, 0.36, g);
+    bx(0.56, 0.06, 0.02, M(0x3d4650), x, 0.1, 0.33, g);
+    scr(0.3, 0.11, 256, (c, t, w, h) => { sbg(c, w, h);
+      const v = i ? (4.1 + 0.08*Math.sin(t*0.7)).toFixed(1) : (-80.4 + 0.15*Math.sin(t*0.5)).toFixed(1);
+      stext(c, v.replace('-', '−') + '°C', 12, h/2 + 2, 50, col, 600); }, g, x - 0.08, 1.68, 0.342);
+    bx(0.03, 0.03, 0.01, MB(0x41e08a), x + 0.22, 1.68, 0.342, g);
+  });
+  const a = new THREE.Object3D(); a.position.set(0, 1.98, 0.3); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:3.6};
+};
+
+B.bsc = () => {
+  const g = new THREE.Group(); const W = 1.0, D = 0.62;
+  const white = M(C.white), dark = M(C.dark);
+  [[-.45,-.25],[.45,-.25],[-.45,.25],[.45,.25]].forEach(([x,z]) => bx(0.05, 0.72, 0.05, M(0x8d969e, {metalness:.6}), x, 0.36, z, g));
+  bx(W, 0.06, D, dark, 0, 0.75, 0, g);
+  bx(W-0.1, 0.03, D-0.12, M(0xc4ccd3, {metalness:.7, roughness:.3}), 0, 0.795, -0.03, g);
+  bx(0.05, 0.8, D, white, -W/2+0.025, 1.18, 0, g); bx(0.05, 0.8, D, white, W/2-0.025, 1.18, 0, g);
+  bx(W, 0.8, 0.04, white, 0, 1.18, -D/2+0.02, g);
+  bx(W, 0.42, D, white, 0, 1.79, 0, g);
+  bx(W-0.08, 0.13, 0.02, dark, 0, 1.7, D/2+0.006, g);
+  const sash = bx(W-0.1, 0.55, 0.015, glassM(0.2), 0, 1.3, D/2-0.05, g); sash.rotation.x = -0.12;
+  const lamp = bx(0.7, 0.022, 0.022, MB(0xcdb8ff), 0, 1.54, -0.18, g);
+  bx(0.26, 0.05, 0.12, M(C.blue), -0.18, 0.835, 0, g);
+  for(let i = 0; i < 8; i++) cy(0.009, 0.009, 0.075, M(i%2 ? C.amber : C.white), -0.27 + i*0.026, 0.88, 0, g, 8);
+  bx(0.18, 0.12, 0.14, M(0xe7ebee), 0.25, 0.87, -0.05, g); // waste bin
+  const N = 110, pos = new Float32Array(N*3);
+  for(let i = 0; i < N; i++){ pos[i*3] = (Math.random()-.5)*0.84; pos[i*3+1] = 0.85 + Math.random()*0.7; pos[i*3+2] = -0.25 + Math.random()*0.45; }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(pg, new THREE.PointsMaterial({color:0x9fd8ff, size:0.012, transparent:true, opacity:.75, depthWrite:false})); g.add(pts);
+  scr(0.34, 0.08, 300, (c, t, w, h) => { sbg(c, w, h); stext(c, '↓ 0.45 m/s', 10, h/2, 30, '#9fd8ff'); stext(c, 'OK', w-56, h/2, 30, '#5fd08f', 600); }, g, 0.25, 1.7, D/2+0.018);
+  const a = new THREE.Object3D(); a.position.set(0, 2.12, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:3.0, update(t, dt){
+    const p = pts.geometry.attributes.position;
+    for(let i = 0; i < N; i++){ let y = p.getY(i) - dt*0.28; if(y < 0.83) y = 1.55; p.setY(i, y); }
+    p.needsUpdate = true;
+  }};
+};
+
+B.extract = () => {
+  const g = new THREE.Group(); const white = M(C.white), dark = M(C.dark);
+  bx(0.56, 0.18, 0.5, white, 0, 0.09, 0, g);
+  bx(0.56, 0.15, 0.5, dark, 0, 0.555, 0, g);
+  bx(0.04, 0.3, 0.5, white, -0.26, 0.33, 0, g); bx(0.04, 0.3, 0.5, white, 0.26, 0.33, 0, g);
+  bx(0.48, 0.3, 0.03, M(C.grey), 0, 0.33, -0.235, g);
+  bx(0.48, 0.3, 0.01, glassM(0.18), 0, 0.33, 0.246, g);
+  const plate = bx(0.3, 0.035, 0.2, M(0xf4f6f7), 0, 0.198, 0.02, g);
+  for(let i = 0; i < 6; i++) bx(0.3, 0.006, 0.012, M(0xb9c4cc), 0, 0.218, -0.065 + i*0.034, plate.parent);
+  const rods = new THREE.Group(); g.add(rods);
+  for(let i = 0; i < 12; i++) cy(0.007, 0.007, 0.2, M(C.steel, {metalness:.8, roughness:.25}), -0.165 + i*0.03, 0, 0.02, rods, 8);
+  bx(0.38, 0.02, 0.06, M(0x3b4651), 0, 0.1, 0.02, rods);
+  scr(0.22, 0.08, 256, (c, t, w, h) => { sbg(c, w, h);
+    const st = ['LYSIS','BIND','WASH 1','WASH 2','DRY','ELUTE']; const i = Math.floor(t/2.2) % 6;
+    stext(c, st[i], 10, 26, 26, '#9fe6b0', 600); stext(c, (i+1)+'/6', w-56, 26, 22, '#8b9dab');
+    c.fillStyle = '#1f2c36'; c.fillRect(10, h-22, w-20, 8); c.fillStyle = '#9fe6b0'; c.fillRect(10, h-22, (w-20)*((t/2.2)%1), 8);
+  }, g, 0.13, 0.555, 0.252);
+  const a = new THREE.Object3D(); a.position.set(0, 0.78, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.7, update(t){
+    rods.position.y = 0.32 + 0.06*Math.sin(t*2.4);
+    rods.position.z = 0.0;
+  }};
+};
+
+B.lh = () => {
+  const g = new THREE.Group(); const white = M(C.white), dark = M(C.dark);
+  bx(1.1, 0.08, 0.56, white, 0, 0.04, 0, g);
+  bx(1.02, 0.015, 0.48, M(0x9aa3ab, {metalness:.5, roughness:.4}), 0, 0.087, 0, g);
+  const items = [
+    [-0.36,-0.12, 0x3b82c4, 0.07],[0,-0.12, 0xf4f6f7, 0.03],[0.36,-0.12, 0x2a3038, 0.06],
+    [-0.36, 0.12, 0x3b82c4, 0.07],[0, 0.12, 0xf2a33a, 0.04],[0.36, 0.12, 0xf4f6f7, 0.03]];
+  items.forEach(([x,z,col,h]) => { bx(0.24, h, 0.16, M(col, {roughness:.45}), x, 0.095 + h/2, z, g);
+    if(col === 0x3b82c4) for(let i = 0; i < 4; i++) bx(0.22, 0.004, 0.006, M(0x1f5a92), x, 0.096+h, z - 0.06 + i*0.04, g); });
+  [[-.53,-.26],[.53,-.26],[-.53,.26],[.53,.26]].forEach(([x,z]) => bx(0.04, 0.72, 0.04, dark, x, 0.44, z, g));
+  bx(1.1, 0.05, 0.05, dark, 0, 0.8, -0.255, g); bx(1.1, 0.05, 0.05, dark, 0, 0.8, 0.255, g);
+  bx(0.01, 0.68, 0.48, glassM(0.14), -0.545, 0.44, 0, g); bx(0.01, 0.68, 0.48, glassM(0.14), 0.545, 0.44, 0, g);
+  bx(1.06, 0.32, 0.01, glassM(0.12), 0, 0.64, 0.278, g);
+  const bar = bx(1.0, 0.014, 0.014, MB(0x37d3c2), 0, 0.832, 0.27, g);
+  const gantry = new THREE.Group(); gantry.position.y = 0.76; g.add(gantry);
+  bx(0.06, 0.04, 0.52, M(0x3a4048, {metalness:.4}), 0, 0, 0, gantry);
+  const head = new THREE.Group(); gantry.add(head);
+  bx(0.09, 0.15, 0.1, white, 0, -0.085, 0, head);
+  bx(0.092, 0.02, 0.102, M(C.amber), 0, -0.04, 0, head);
+  for(let i = 0; i < 8; i++) cy(0.0035, 0.002, 0.09, M(0xe9eef1), 0, -0.205, -0.042 + i*0.012, head, 6);
+  const a = new THREE.Object3D(); a.position.set(0, 0.95, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:2.2, update(t){
+    gantry.position.x = 0.36*Math.sin(t*0.55);
+    head.position.z = 0.12*Math.sin(t*0.9 + 1);
+    const dip = Math.pow(Math.max(0, Math.sin(t*2.4)), 3);
+    head.position.y = -dip*0.3;
+  }};
+};
+
+function tcTemp(t){
+  const p = ((t % 3.6) + 3.6) % 3.6;
+  if(p < 0.3) return lerp(72, 95, p/0.3);
+  if(p < 1.0) return 95;
+  if(p < 1.4) return lerp(95, 60, (p-1.0)/0.4);
+  if(p < 2.2) return 60;
+  if(p < 2.4) return lerp(60, 72, (p-2.2)/0.2);
+  return 72;
+}
+B.tc = () => {
+  const g = new THREE.Group(); const dark = M(C.dark);
+  bx(0.28, 0.2, 0.42, M(C.white), -0.2, 0.1, 0, g);
+  const lid = bx(0.27, 0.07, 0.36, dark, -0.2, 0.235, -0.02, g);
+  bx(0.2, 0.02, 0.02, M(C.steel, {metalness:.7}), -0.2, 0.235, 0.165, g);
+  const led1 = bx(0.22, 0.012, 0.01, MB(0x3b82c4), -0.2, 0.03, 0.212, g);
+  scr(0.15, 0.08, 220, (c, t, w, h) => { sbg(c, w, h); c.strokeStyle = '#ff9b54'; c.lineWidth = 3; c.beginPath();
+    for(let i = 0; i <= 60; i++){ const T = tcTemp(t - (60-i)*0.08); const y = h - 8 - (T-50)/50*(h-34); i ? c.lineTo(i/60*w, y) : c.moveTo(0, y); }
+    c.stroke(); stext(c, tcTemp(t).toFixed(1) + '°C', 8, 16, 20, '#e3ebf0', 600); }, g, -0.2, 0.13, 0.211);
+  bx(0.36, 0.32, 0.46, M(C.off), 0.17, 0.16, 0, g);
+  bx(0.34, 0.05, 0.4, dark, 0.17, 0.345, -0.02, g);
+  const led2 = bx(0.3, 0.012, 0.01, MB(0x5fd08f), 0.17, 0.03, 0.232, g);
+  const s2 = scr(0.24, 0.15, 300, (c, t, w, h) => { sbg(c, w, h);
+    c.strokeStyle = '#1b2a35'; c.lineWidth = 1; for(let i = 1; i < 5; i++){ c.beginPath(); c.moveTo(0, i*h/5); c.lineTo(w, i*h/5); c.stroke(); }
+    const cyc = (t*3) % 48, cts = [18,21,24,27,31,35], cols = ['#5fd08f','#5cc6d6','#f2a33a','#ff7a7a','#c7a6ff','#e3ebf0'];
+    cts.forEach((ct, j) => { c.strokeStyle = cols[j]; c.lineWidth = 2.5; c.beginPath();
+      for(let k = 0; k <= Math.min(40, cyc); k += 0.5){ const f = 1/(1 + Math.exp(-(k-ct)*0.42)); const x = k/40*(w-12)+6, y = h-8 - f*(h-36); k ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); });
+    stext(c, 'qPCR · cycle ' + Math.min(40, Math.floor(cyc)), 8, 15, 18, '#8b9dab'); }, g, 0.17, 0.19, 0.232);
+  s2.mesh.rotation.x = -0.15;
+  const a = new THREE.Object3D(); a.position.set(0, 0.52, 0.2); g.add(a);
+  const cA = new THREE.Color(0x3b82c4), cB = new THREE.Color(0xff5a3c);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.6, update(t){
+    const k = clamp((tcTemp(t) - 58)/37, 0, 1); led1.material.color.copy(cA).lerp(cB, k);
+    led2.material.color.setHex(Math.sin(t*3) > 0 ? 0x5fd08f : 0x2f6a49);
+  }};
+};
+
+B.dpcr = () => {
+  const g = new THREE.Group();
+  bx(0.5, 0.46, 0.5, M(C.white), 0, 0.23, 0, g);
+  bx(0.5, 0.05, 0.5, M(C.dark), 0, 0.485, 0, g);
+  bx(0.46, 0.16, 0.01, M(0x1f252c), 0, 0.1, 0.252, g);
+  const drawer = new THREE.Group(); g.add(drawer);
+  bx(0.32, 0.03, 0.3, M(0xc9d0d6, {metalness:.4}), 0, 0.1, 0.12, drawer);
+  bx(0.2, 0.015, 0.13, M(0x1f6aa8), 0, 0.122, 0.17, drawer);
+  const s = scr(0.24, 0.16, 300, (c, t, w, h) => { sbg(c, w, h);
+    const cols = 24, rows = 12, cw = (w-16)/cols, ch = (h-30)/rows, show = Math.floor(((t*0.3) % 1.25)*cols*rows);
+    let pos = 0;
+    for(let i = 0; i < cols*rows; i++){ const r = Math.floor(i/cols), q = i % cols; const p = hash(i + 7) < 0.22;
+      if(i < show && p) pos++;
+      c.fillStyle = i < show ? (p ? '#5cc6d6' : '#1c3341') : '#101b23';
+      c.fillRect(8 + q*cw, 24 + r*ch, cw-2, ch-2); }
+    stext(c, 'positives ' + pos, 8, 12, 16, '#8b9dab'); }, g, 0.04, 0.34, 0.26);
+  s.mesh.rotation.x = -0.12;
+  bx(0.05, 0.05, 0.01, MB(0x5cc6d6), 0.19, 0.42, 0.253, g);
+  const a = new THREE.Object3D(); a.position.set(0, 0.68, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.6, update(t){
+    const p = (t*0.22) % 1; const out = p < 0.15 ? p/0.15 : p < 0.35 ? 1 : p < 0.5 ? 1 - (p-0.35)/0.15 : 0;
+    drawer.position.z = out*0.2 - 0.03;
+  }};
+};
+
+B.srseq = () => {
+  const g = new THREE.Group();
+  bx(0.75, 0.6, 0.55, M(C.off), 0, 0.3, 0, g);
+  bx(0.76, 0.03, 0.56, M(C.dark), 0, 0.615, 0, g);
+  bx(0.76, 0.03, 0.56, M(C.dark), 0, 0.015, 0, g);
+  bx(0.24, 0.16, 0.02, M(0x10161c), 0.2, 0.38, 0.27, g);
+  const fc = bx(0.18, 0.025, 0.012, MB(0x5fd08f), 0.2, 0.34, 0.283, g);
+  bx(0.14, 0.012, 0.06, M(0x9aa6b0, {metalness:.5}), 0.2, 0.4, 0.27, g);
+  bx(0.62, 0.008, 0.008, M(C.dark), 0, 0.15, 0.277, g);
+  bx(0.34, 0.24, 0.02, M(0x161c22), -0.15, 0.4, 0.27, g);
+  scr(0.31, 0.21, 360, (c, t, w, h) => { sbg(c, w, h, '#07131c');
+    const cyc = Math.floor(t*4) % 300 + 1;
+    stext(c, 'RUN 2×150 · CYCLE ' + cyc + '/300', 10, 16, 17, '#e3ebf0', 500);
+    const cols = ['#5fd08f','#5cc6d6','#ffd36b','#ff7a7a'];
+    const s = Math.floor(t*10);
+    for(let i = 0; i < 260; i++){ c.fillStyle = cols[Math.floor(hash(i*3.1 + s)*4)]; c.globalAlpha = 0.5 + hash(i + s*0.7)*0.5;
+      c.beginPath(); c.arc(10 + hash(i*1.7)*(w*0.55), 34 + hash(i*2.3)*(h-44), 2.2, 0, 6.3); c.fill(); }
+    c.globalAlpha = 1;
+    const x0 = w*0.62;
+    stext(c, '%≥Q30', x0, 48, 15, '#8b9dab'); c.fillStyle = '#1f2c36'; c.fillRect(x0, 60, w-x0-12, 10); c.fillStyle = '#5fd08f'; c.fillRect(x0, 60, (w-x0-12)*0.91, 10); stext(c, '91.2', x0, 86, 17, '#e3ebf0');
+    stext(c, 'PF', x0, 116, 15, '#8b9dab'); c.fillStyle = '#1f2c36'; c.fillRect(x0, 128, w-x0-12, 10); c.fillStyle = '#5cc6d6'; c.fillRect(x0, 128, (w-x0-12)*0.84, 10); stext(c, '84.0', x0, 154, 17, '#e3ebf0');
+    stext(c, (cyc*0.21).toFixed(1) + ' Gb', x0, h-18, 17, '#ffd36b');
+  }, g, -0.15, 0.4, 0.281);
+  const a = new THREE.Object3D(); a.position.set(0, 0.8, 0.2); g.add(a);
+  const seq = [0x5fd08f, 0x5cc6d6, 0xffd36b, 0xff7a7a];
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.9, update(t){
+    const k = Math.floor(t*2.5) % 4; fc.material.color.setHex(seq[k]);
+    const f = (t*2.5) % 1; fc.scale.x = 0.6 + 0.4*Math.sin(f*Math.PI);
+  }};
+};
+
+B.fluor = () => {
+  const g = new THREE.Group();
+  bx(0.16, 0.07, 0.22, M(C.white), 0, 0.035, 0, g);
+  cy(0.03, 0.03, 0.016, M(C.dark), 0.03, 0.078, -0.05, g, 20);
+  const s = scr(0.1, 0.07, 160, (c, t, w, h) => { sbg(c, w, h);
+    const v = (42.6 + hash(Math.floor(t/3))*30).toFixed(1); stext(c, v, 8, h/2 - 8, 34, '#c7a6ff', 600); stext(c, 'ng/µL dsDNA', 8, h-14, 14, '#8b9dab'); }, g, -0.02, 0.0715, 0.04);
+  s.mesh.rotation.x = -Math.PI/2;
+  bx(0.12, 0.04, 0.08, M(C.blue), 0.17, 0.02, 0.02, g);
+  for(let i = 0; i < 4; i++) cy(0.008, 0.007, 0.06, M(0xf1f3f4, {transparent:true, opacity:.8}), 0.13 + i*0.026, 0.06, 0.02, g, 8);
+  hitbox(0.36, 0.25, 0.3, 0.07, 0.12, 0, g);
+  const a = new THREE.Object3D(); a.position.set(0.05, 0.28, 0.1); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.0};
+};
+
+B.nanopore = () => {
+  const g = new THREE.Group();
+  bx(0.1, 0.035, 0.2, M(C.dark), -0.15, 0.0175, 0, g);
+  bx(0.09, 0.006, 0.12, M(0x48535e), -0.15, 0.038, 0.02, g);
+  const led = bx(0.012, 0.006, 0.012, MB(0x5cc6d6), -0.12, 0.04, -0.07, g);
+  cy(0.006, 0.006, 0.12, M(0x111111), -0.07, 0.01, 0, g, 6).rotation.z = Math.PI/2;
+  bx(0.26, 0.025, 0.19, M(0x39424b, {metalness:.4}), 0.1, 0.0125, 0.03, g);
+  const lap = new THREE.Group(); lap.position.set(0.1, 0.025, -0.06); lap.rotation.x = -0.28; g.add(lap);
+  bx(0.26, 0.17, 0.008, M(0x1d2329), 0, 0.085, 0, lap);
+  scr(0.24, 0.15, 300, (c, t, w, h) => { sbg(c, w, h, '#071017');
+    c.strokeStyle = '#5cc6d6'; c.lineWidth = 2; c.beginPath();
+    for(let x = 0; x <= w; x += 2){ const s = t*80 + x; const lvl = hash(Math.floor(s/14)); const y = h*0.55 - (lvl-0.5)*h*0.55 + (hash(s*0.37)-0.5)*6; x ? c.lineTo(x, y) : c.moveTo(x, y); }
+    c.stroke(); const reads = Math.floor(18000 + t*37);
+    stext(c, 'reads ' + reads.toLocaleString('en-US'), 8, 14, 16, '#e3ebf0'); stext(c, (reads*0.000068).toFixed(2) + ' Gb', w-90, 14, 16, '#ffd36b'); }, lap, 0, 0.085, 0.005);
+  hitbox(0.5, 0.25, 0.3, 0, 0.12, 0, g);
+  const a = new THREE.Object3D(); a.position.set(0, 0.32, 0.1); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.0, update(t){ led.material.color.setHex(Math.sin(t*6) > 0 ? 0x5cc6d6 : 0x1e4b52); }};
+};
+
+B.hpc = () => {
+  const g = new THREE.Group();
+  bx(0.6, 1.9, 0.6, M(0x1c2127, {roughness:.5}), 0, 0.95, 0, g);
+  bx(0.56, 1.78, 0.01, glassM(0.12), 0, 0.95, 0.305, g);
+  const leds = [];
+  for(let i = 0; i < 9; i++){
+    const y = 0.16 + i*0.175;
+    bx(0.54, 0.14, 0.02, M(i < 4 ? 0x2c343d : 0x323b45), 0, y, 0.285, g);
+    for(let k = 0; k < 6; k++){ const l = bx(0.016, 0.01, 0.006, MB(0x5fd08f), -0.22 + k*0.025, y + 0.035, 0.298, g); leds.push(l); }
+    if(i < 4) for(let k = 0; k < 3; k++){ const f = cy(0.035, 0.035, 0.006, M(0x11161b), 0.06 + k*0.08, y - 0.005, 0.298, g, 16); f.rotation.x = Math.PI/2; }
+  }
+  scr(0.4, 0.08, 360, (c, t, w, h) => { sbg(c, w, h); const u = Math.round(70 + 20*Math.sin(t*0.4));
+    stext(c, 'GPU 4× ' + u + '%', 10, h/2, 24, '#7aa7ff', 600); stext(c, '1.2 TB/d', w-120, h/2, 22, '#8b9dab'); }, g, 0, 1.83, 0.312);
+  const a = new THREE.Object3D(); a.position.set(0, 2.05, 0.25); g.add(a);
+  const pal = [0x5fd08f, 0x5cc6d6, 0x7aa7ff, 0x1d3a2a];
+  let acc = 0;
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:2.8, update(t, dt){
+    acc += dt; if(acc < 0.09) return; acc = 0;
+    for(let i = 0; i < 10; i++){ const l = leds[Math.floor(Math.random()*leds.length)]; l.material.color.setHex(pal[Math.floor(Math.random()*pal.length)]); }
+  }};
+};
+
+B.centrifuge = () => {
+  const g = new THREE.Group(); const white = M(C.white);
+  cy(0.27, 0.28, 0.3, M(C.white, {side:THREE.DoubleSide}), 0, 0.15, -0.03, g, 40, true);
+  cy(0.27, 0.27, 0.02, M(0x1a1f25), 0, 0.02, -0.03, g, 40);
+  cy(0.26, 0.26, 0.06, M(0x1a1f25), 0, 0.12, -0.03, g, 40);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.272, 0.012, 8, 48), M(C.steel, {metalness:.7, roughness:.3})); ring.rotation.x = Math.PI/2; ring.position.set(0, 0.3, -0.03); g.add(ring);
+  cy(0.27, 0.27, 0.015, glassM(0.22), 0, 0.31, -0.03, g, 40);
+  const pan = bx(0.42, 0.12, 0.12, M(C.grey), 0, 0.06, 0.26, g);
+  let spinRpm = 0, w = 0;
+  const s = scr(0.18, 0.06, 240, (c, t, w, h) => { sbg(c, w, h); stext(c, Math.round(spinRpm).toLocaleString('en-US') + ' rpm', 8, h/2, 24, '#9fe6b0', 600); }, g, -0.05, 0.1, 0.302);
+  s.mesh.rotation.x = -0.4;
+  const rotor = new THREE.Group(); rotor.position.set(0, 0.2, -0.03); g.add(rotor);
+  cy(0.04, 0.04, 0.05, M(C.steel, {metalness:.8, roughness:.25}), 0, 0, 0, rotor, 16);
+  for(let i = 0; i < 4; i++){ const arm = new THREE.Group(); arm.rotation.y = i*Math.PI/2; rotor.add(arm);
+    bx(0.19, 0.02, 0.03, M(C.steel, {metalness:.8, roughness:.25}), 0.1, 0, 0, arm);
+    cy(0.04, 0.035, 0.07, M(C.blue), 0.2, 0, 0, arm, 14); }
+  const a = new THREE.Object3D(); a.position.set(0, 0.5, 0.1); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.4, update(t, dt){
+    const p = t % 9; const target = p < 6.5 ? 30 : 0;
+    w = lerp(w, target, 1 - Math.exp(-dt*(target ? 0.9 : 1.6)));
+    rotor.rotation.y += w*dt; spinRpm = w*95;
+  }};
+};
+
+B.incubator = () => {
+  const g = new THREE.Group();
+  bx(0.55, 0.88, 0.55, M(C.white), 0, 0.44, 0, g);
+  bx(0.47, 0.72, 0.02, M(0x2a3038), 0, 0.43, -0.22, g);
+  bx(0.47, 0.72, 0.01, glassM(0.16), 0, 0.43, 0.277, g);
+  bx(0.55, 0.1, 0.012, M(C.dark), 0, 0.83, 0.278, g);
+  const plateCols = [0xf2a33a, 0xf4f6f7, 0x3b82c4, 0xf4f6f7, 0x9fe6b0, 0xf4f6f7, 0xff8f7a, 0xf4f6f7];
+  for(let i = 0; i < 8; i++){ const y = 0.11 + i*0.085;
+    bx(0.45, 0.006, 0.4, M(C.steel, {metalness:.6}), 0, y, 0, g);
+    if(hash(i + 3) > 0.25) bx(0.13, 0.018, 0.09, M(plateCols[i]), -0.1, y + 0.013, 0.05, g);
+    if(hash(i + 11) > 0.35) bx(0.13, 0.018, 0.09, M(plateCols[(i+3)%8]), 0.1, y + 0.013, 0.05, g); }
+  const shuttle = bx(0.06, 0.04, 0.32, M(C.amber), 0.2, 0.2, 0, g);
+  scr(0.26, 0.07, 300, (c, t, w, h) => { sbg(c, w, h); stext(c, '37.0°C', 10, h/2, 26, '#ffd36b', 600); stext(c, '18/22', w-82, h/2, 22, '#8b9dab'); }, g, 0, 0.83, 0.286);
+  const a = new THREE.Object3D(); a.position.set(0, 1.05, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.9, update(t){ shuttle.position.y = 0.15 + (0.5 + 0.5*Math.sin(t*0.6))*0.55; }};
+};
+
+B.frag = () => {
+  const g = new THREE.Group();
+  bx(0.55, 0.5, 0.5, M(C.white), 0, 0.25, 0, g);
+  bx(0.56, 0.04, 0.51, M(C.dark), 0, 0.5, 0, g);
+  bx(0.2, 0.26, 0.01, M(0x0b1a26), -0.14, 0.3, 0.252, g);
+  const caps = [];
+  for(let i = 0; i < 12; i++) caps.push(bx(0.006, 0.22, 0.004, MB(0x4aa8ff), -0.22 + i*0.015, 0.3, 0.259, g));
+  bx(0.4, 0.05, 0.02, M(0x9aa6b0, {metalness:.4}), 0, 0.06, 0.255, g);
+  const s = scr(0.24, 0.16, 300, (c, t, w, h) => { sbg(c, w, h);
+    const sc = (t*0.18) % 1.15;
+    c.strokeStyle = '#c7a6ff'; c.lineWidth = 2.5; c.beginPath();
+    for(let x = 0; x <= w*Math.min(1, sc); x += 2){ const u = x/w;
+      const y = 0.9*Math.exp(-Math.pow((u-0.08)/0.008, 2)) + 0.65*Math.exp(-Math.pow((u-0.48)/0.07, 2)) + 0.12*Math.exp(-Math.pow((u-0.2)/0.01, 2)) + 0.9*Math.exp(-Math.pow((u-0.92)/0.008, 2));
+      const py = h - 10 - y*(h-36); x ? c.lineTo(x, py) : c.moveTo(x, py); }
+    c.stroke(); stext(c, 'peak 452 bp', 8, 14, 16, '#8b9dab'); }, g, 0.12, 0.31, 0.256);
+  const a = new THREE.Object3D(); a.position.set(0, 0.72, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:1.6, update(t){
+    caps.forEach((m, i) => { const k = 0.5 + 0.5*Math.sin(t*3 + i*0.6); m.material.color.setRGB(0.15 + 0.15*k, 0.4 + 0.3*k, 0.7 + 0.3*k); });
+  }};
+};
+
+B.lcms = () => {
+  const g = new THREE.Group();
+  for(let i = 0; i < 4; i++){ bx(0.32, 0.12, 0.45, M(C.white), -0.36, 0.06 + i*0.125, 0, g);
+    bx(0.3, 0.02, 0.006, M(C.dark), -0.36, 0.09 + i*0.125, 0.227, g);
+    bx(0.02, 0.02, 0.006, MB(i === 1 ? 0xf2a33a : 0x5fd08f), -0.24, 0.04 + i*0.125, 0.227, g); }
+  bx(0.32, 0.02, 0.4, M(C.grey), -0.36, 0.51, 0, g);
+  const bcols = [0xcfe8f2, 0xd9f0dc, 0xf6e7c8, 0xcfe8f2];
+  bcols.forEach((col, i) => { cy(0.032, 0.032, 0.13, M(col, {transparent:true, opacity:.65, roughness:.1}), -0.47 + i*0.075, 0.585, -0.05, g, 14);
+    cy(0.014, 0.014, 0.02, M(i%2 ? C.blue : C.amber), -0.47 + i*0.075, 0.66, -0.05, g, 10); });
+  bx(0.64, 0.48, 0.55, M(C.off), 0.21, 0.24, 0, g);
+  bx(0.64, 0.04, 0.55, M(C.dark), 0.21, 0.49, 0, g);
+  bx(0.1, 0.16, 0.16, M(0x3a4048, {metalness:.5}), -0.15, 0.3, 0.12, g);
+  const tube = cy(0.005, 0.005, 0.12, M(0x8fa0ad), -0.2, 0.3, 0.12, g, 6); tube.rotation.z = Math.PI/2;
+  bx(0.32, 0.22, 0.02, M(0x161c22), 0.3, 0.3, 0.28, g);
+  scr(0.29, 0.19, 360, (c, t, w, h) => { sbg(c, w, h, '#0a121a');
+    c.strokeStyle = '#ffd36b'; c.lineWidth = 2; c.beginPath();
+    const off = t*40;
+    for(let x = 0; x <= w; x += 2){ const s = (x + off)/38; const i = Math.floor(s), f = s - i;
+      const amp = hash(i) > 0.55 ? hash(i*7.1) : 0; const y = amp*Math.exp(-Math.pow((f-0.5)/0.09, 2)) + 0.02*hash(x + Math.floor(off));
+      const py = h*0.62 - y*(h*0.48); x ? c.lineTo(x, py) : c.moveTo(x, py); }
+    c.stroke();
+    for(let k = 0; k < 28; k++){ const v = hash(k*3.3 + Math.floor(t*2)); c.fillStyle = '#5cc6d6'; c.fillRect(8 + k*((w-16)/28), h - 6 - v*30, 4, v*30); }
+    stext(c, 'MRM · 40 transitions', 8, 14, 15, '#8b9dab'); }, g, 0.3, 0.3, 0.292);
+  const a = new THREE.Object3D(); a.position.set(0, 0.85, 0.2); g.add(a);
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:2.0};
+};
+
+B.arm = () => {
+  const g = new THREE.Group();
+  const steel = M(C.steel, {metalness:.75, roughness:.3});
+  bx(5.9, 0.05, 0.1, steel, -0.95, 2.215, 0, g);
+  for(let x = -3.6; x <= 1.9; x += 1.1) bx(0.03, 0.05, 0.03, steel, x, 2.26, 0, g);
+  const car = new THREE.Group(); car.position.set(-1, 2.15, 0); g.add(car);
+  bx(0.24, 0.08, 0.18, M(C.dark), 0, 0, 0, car);
+  bx(0.25, 0.012, 0.19, M(C.amber), 0, 0.02, 0, car);
+  const yaw = new THREE.Group(); yaw.position.y = -0.06; car.add(yaw);
+  cy(0.06, 0.06, 0.06, M(C.white), 0, -0.01, 0, yaw);
+  const sh = new THREE.Group(); sh.position.y = -0.06; yaw.add(sh);
+  cy(0.045, 0.045, 0.1, M(C.amber), 0, 0, 0, sh).rotation.z = Math.PI/2;
+  bx(0.07, 0.42, 0.07, M(C.white), 0, -0.21, 0, sh);
+  const el = new THREE.Group(); el.position.y = -0.42; sh.add(el);
+  cy(0.04, 0.04, 0.09, M(C.amber), 0, 0, 0, el).rotation.z = Math.PI/2;
+  bx(0.06, 0.38, 0.06, M(C.white), 0, -0.19, 0, el);
+  const wr = new THREE.Group(); wr.position.y = -0.38; el.add(wr);
+  cy(0.035, 0.035, 0.05, M(C.dark), 0, -0.02, 0, wr, 16);
+  bx(0.14, 0.03, 0.06, M(C.dark), 0, -0.055, 0, wr);
+  const f1 = bx(0.012, 0.06, 0.05, M(0x3a4048), -0.06, -0.09, 0, wr), f2 = bx(0.012, 0.06, 0.05, M(0x3a4048), 0.06, -0.09, 0, wr);
+  const plate = bx(0.115, 0.016, 0.08, M(C.blue), 0, -0.11, 0, wr); plate.visible = false;
+  const a = new THREE.Object3D(); a.position.set(0, 0.16, 0); car.add(a);
+  const st = {x:-1, tx:-1, side:-1, yaw:0, r:0, carry:false, since:0, moving:false, speed:1};
+  return {g, a, face:new THREE.Vector3(0,0,1), dist:3.2, st,
+    setTarget(x, side, carry){ st.tx = clamp(x, -3.85, 1.95); st.side = side; st.carry = carry; },
+    update(t, dt){
+      const d = st.tx - st.x, mv = Math.abs(d) > 0.01;
+      if(mv && st.r < 0.2) st.x += clamp(d, -dt*1.3*st.speed, dt*1.3*st.speed);
+      if(mv !== st.moving){ st.moving = mv; if(!mv) st.since = 0; }
+      st.since += dt*st.speed;
+      car.position.x = st.x;
+      const ty = st.side < 0 ? 0 : Math.PI; st.yaw = lerp(st.yaw, ty, 1 - Math.exp(-dt*4*st.speed)); yaw.rotation.y = st.yaw;
+      const want = mv ? 0 : ((st.since % 3) < 1.6 ? 1 : 0.15);
+      st.r = lerp(st.r, want, 1 - Math.exp(-dt*3.5*st.speed));
+      const ts = 0.5 + 0.5*st.r, te = -1.9 + 1.3*st.r; sh.rotation.x = ts; el.rotation.x = te; wr.rotation.x = -(ts + te);
+      const grip = st.r > 0.85 ? 0.045 : 0.06; f1.position.x = -grip; f2.position.x = grip;
+      plate.visible = st.carry;
+    }};
+};
+
+B.power = () => {
+  const g = new THREE.Group();
+  const solar = new THREE.Group(); g.add(solar);
+  const sc = document.createElement('canvas'); sc.width = 128; sc.height = 128; const k = sc.getContext('2d');
+  k.fillStyle = '#16294a'; k.fillRect(0,0,128,128); k.strokeStyle = '#5f7fb0'; k.lineWidth = 1.5;
+  for(let i = 0; i <= 128; i += 21.3){ k.beginPath(); k.moveTo(i,0); k.lineTo(i,128); k.stroke(); k.beginPath(); k.moveTo(0,i); k.lineTo(128,i); k.stroke(); }
+  const st = new THREE.CanvasTexture(sc); st.encoding = THREE.sRGBEncoding;
+  const pm = M(0xffffff, {map:st, roughness:.25, metalness:.35});
+  for(let i = 0; i < 6; i++) [-0.56, 0.56].forEach(z => { bx(1.0, 0.03, 1.0, pm, -4.25 + i*1.08, 2.43, z, solar); });
+  // satcom + HVAC on the fixed front roof section
+  bx(0.55, 0.05, 0.4, M(C.dark), 2.47, 2.41, 0.6, g);
+  const sat = bx(0.5, 0.04, 0.36, M(0xf1f3f4, {roughness:.4}), 2.47, 2.47, 0.6, g); sat.rotation.z = 0.25;
+  const satLed = bx(0.03, 0.01, 0.03, MB(0x5fd08f), 2.3, 2.5, 0.75, g);
+  bx(0.7, 0.24, 0.8, M(C.grey), 2.47, 2.5, -0.55, g);
+  const fan = new THREE.Group(); fan.position.set(2.47, 2.625, -0.55); g.add(fan);
+  cy(0.22, 0.22, 0.01, M(0x2b3138), 0, 0, 0, fan, 28);
+  for(let i = 0; i < 4; i++){ const b = bx(0.2, 0.006, 0.05, M(C.steel, {metalness:.6}), 0.1, 0.008, 0, fan); const p = new THREE.Group(); p.rotation.y = i*Math.PI/2; p.add(b); fan.add(p); }
+  // battery bank under floor
+  const bat = new THREE.Group(); g.add(bat);
+  bx(3.2, 0.24, 1.5, M(0x2b3a48, {roughness:.5, metalness:.3}), -0.4, -0.52, 0, bat);
+  for(let i = 0; i < 6; i++) bx(0.06, 0.03, 0.02, MB(0x5fd08f), -1.7 + i*0.52, -0.48, 0.755, bat);
+  const a = new THREE.Object3D(); a.position.set(2.47, 2.75, 0.6); g.add(a);
+  return {g, a, solar, solarMat:pm, bat, face:new THREE.Vector3(0.6,1.3,1), dist:4.0, update(t){
+    fan.rotation.y += 0.25; satLed.material.color.setHex(Math.sin(t*5) > 0.2 ? 0x5fd08f : 0x1d3a2a);
+  }};
+};
+
+/* =========================================================
+   PLACE DEVICES
+   ========================================================= */
+const FAR = -0.83, NEAR = 0.83, TOP = 0.92;
+const PLACE = {
+  cold:      [-4.35, 0, 0, Math.PI/2],
+  bsc:       [-3.25, 0, 0.82, Math.PI],
+  extract:   [-3.45, TOP, FAR, 0],
+  lh:        [-2.4, TOP, FAR, 0],
+  tc:        [-1.35, TOP, FAR, 0],
+  dpcr:      [-0.55, TOP, FAR, 0],
+  srseq:     [0.42, TOP, FAR, 0],
+  fluor:     [1.12, TOP, FAR, 0],
+  nanopore:  [1.68, TOP, FAR, 0],
+  hpc:       [2.5, 0, FAR, 0],
+  centrifuge:[-2.25, TOP, NEAR, Math.PI],
+  incubator: [-1.4, TOP, NEAR, Math.PI],
+  frag:      [-0.5, TOP, NEAR, Math.PI],
+  lcms:      [0.75, TOP, NEAR, Math.PI],
+  arm:       [0, 0, 0, 0],
+  power:     [0, 0, 0, 0]
+};
+const DEV = {};
+const devGroups = [];
+const _v = new THREE.Vector3();
+DEVICES.forEach(d => {
+  const b = B[d.id]();
+  const [x, y, z, r] = PLACE[d.id];
+  b.g.position.set(x, y, z); b.g.rotation.y = r; b.g.userData.devId = d.id;
+  scene.add(b.g); devGroups.push(b.g);
+  b.g.traverse(o => { if(o.isMesh || o.isPoints){ o.userData.devId = d.id; } });
+  b.data = d;
+  b.faceW = b.face.clone().applyAxisAngle(new THREE.Vector3(0,1,0), r).normalize();
+  b.mats = [];
+  b.g.traverse(o => { if((o.isMesh || o.isPoints) && o.material && !b.mats.includes(o.material)){
+    const m = o.material; m.userData.b = {op:m.opacity, tr:m.transparent, dw:m.depthWrite, em: m.emissive ? m.emissive.clone() : null}; b.mats.push(m); } });
+  b.lastK = 0;
+  DEV[d.id] = b;
+});
+scene.updateMatrixWorld(true);
+const anchorW = id => DEV[id].a.getWorldPosition(new THREE.Vector3());
+function focusW(id){
+  const b = DEV[id];
+  if(id === 'arm') return DEV.arm.a.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, -0.5, 0));
+  if(id === 'power') return new THREE.Vector3(0.2, 1.3, 0);
+  const box = new THREE.Box3().setFromObject(b.g); return box.getCenter(new THREE.Vector3());
+}
+
+/* =========================================================
+   STATE / MODES
+   ========================================================= */
+const S = { mode:'cutaway', hover:null, selected:null, follow:true };
+let wf = null, wfDevs = null, stepIdx = 0, stepT = 0, playing = false, speed = 1, finished = false;
+const STEP_DUR = 6.0, TRAVEL = 1.6, HOLD = 1.6, MIN_NARRATED = 4.0;
+const NARR = { zh:{"outbreak": ["这是疫情病毒全基因组测序流程。九十四份鼻咽拭子送达后，先扫码登记，放进四度冷藏柜保存。", "在生物安全柜里开管，每份取两百微升加入裂解液，病毒在这一步被灭活。", "磁珠法核酸提取仪纯化病毒 RNA，大约三十分钟，洗脱到九十六孔板里。", "用实时荧光定量 PCR 做初筛，Ct 值低于三十三的样本才进入测序。", "移液工作站根据 Ct 值做归一化，配好反转录和两组扩增引物。", "回到 PCR 仪，跑三十五个循环，用约四百个碱基长的扩增子覆盖整个病毒基因组。", "移液工作站自动完成文库构建：片段化，加索引，磁珠纯化，然后等体积混合。", "荧光定量仪测出文库浓度，换算成上机需要的摩尔浓度。", "片段分析仪检查文库长度，主峰应该在四百五十个碱基左右，并且没有接头二聚体。", "短读长测序仪开始双端一百五十碱基测序，大约八小时，每个基因组覆盖一百倍以上。", "边缘计算机柜拆分样本，组装一致性序列，判定病毒谱系，并放进系统发育树。", "最后通过卫星链路，把基因组和聚集性分析报告上传到公共卫生平台。全程大约十四小时。"], "meta": ["这是未知病原宏基因组流程。样本在生物安全柜里一分为二，一半存档，一半放进珠磨裂解管。", "离心机把机械裂解后的碎片沉下去，得到干净的裂解液。", "提取仪同时纯化 DNA 和 RNA，并去除环境样本里的抑制物。", "荧光定量仪确认每个样本至少有五十纳克，满足快速条形码建库。", "移液工作站给十二个样本加上条形码，混合后用磁珠纯化。", "文库加入纳米孔测序仪，数据实时产生。自适应采样会在测序过程中丢弃人源序列。", "GPU 一边做碱基识别，一边做物种分类和耐药基因搜索，读段一到就开始分析。", "初步鉴定结果和耐药谱通过卫星推送给临床团队。从样本到答案，大约五小时。"], "pgx": ["这是药物基因组分型流程。二十四位患者的抗凝血样送达，登记后放入四度冷藏。", "在生物安全柜里，每位患者取两百微升全血，加入裂解板。", "提取仪纯化基因组 DNA，洗脱到一百微升。", "荧光定量仪测量浓度，把每个样本统一到每微升五纳克。", "移液工作站配制数字 PCR 反应，包括两个关键药物代谢基因的等位基因探针和拷贝数检测。", "数字 PCR 把每个反应分成两万六千个微孔，扩增后逐个计数阳性孔，直接得到绝对拷贝数。", "计算机柜判定基因型和代谢表型，为每位患者生成用药建议。全程大约三小时。"], "water": ["这是饮用水污染物筛查流程。二十份水样装在聚丙烯瓶里，登记后四度保存。", "离心去除颗粒物，避免堵塞后面的固相萃取柱。", "移液工作站加入同位素内标，完成上样，清洗和洗脱。", "萃取好的样品板在板库里低温排队，等待质谱空闲。", "液相色谱串联质谱用多反应监测模式，定量四十种全氟化合物和农药，每针五分钟。", "计算机柜积分色谱峰，用八点校准曲线算出浓度。", "结果与监管限值对比后，上传给供水公司。全程大约四小时。"], "amr": ["这是耐药菌分离株测序流程。在生物安全柜里挑取单菌落，接种到深孔板培养基中。", "板子进入培养箱，三十七度振荡培养过夜，大约十六小时。", "离心机以四千倍重力沉淀菌体，去掉上清液。", "酶解加磁珠裂解，让革兰氏阳性菌也能充分破壁，然后提取基因组 DNA。", "荧光定量仪测量浓度，归一化到适合片段化的投入量。", "移液工作站完成片段化和索引 PCR 的反应配制。", "PCR 仪跑十二个循环，给每个样本加上独立的索引序列。", "片段分析仪检查文库长度分布，合格后再混合上机。", "短读长测序仪测序大约十小时，每个菌株覆盖五十倍以上。", "计算机柜做从头组装和分型，找出耐药和毒力基因，并做核心基因组聚类。全程约三十小时，包括过夜培养。"]}, en:{"outbreak": ["This is the outbreak viral genomics workflow. Ninety-four nasal swabs arrive. Each tube is scanned, logged, and held at four degrees.", "Inside the biosafety cabinet, tubes are opened and two hundred microliters go into lysis buffer, which inactivates the virus.", "The magnetic bead extractor purifies viral RNA in about thirty minutes, eluting into a ninety-six well plate.", "A real-time PCR screen comes next. Only samples with a C T value below thirty-three go on to sequencing.", "The liquid handler normalizes each sample by its C T value and sets up reverse transcription and two tiled primer pools.", "Back on the PCR machine, thirty-five cycles of amplification produce overlapping fragments that cover the whole genome.", "The liquid handler builds the libraries automatically: fragmenting, tagging, indexing, bead clean-up, and pooling.", "The fluorometer measures the pool concentration and converts it to the molarity needed for loading.", "The fragment analyzer checks library size. We expect a peak near four hundred fifty base pairs and no adapter dimer.", "The short-read sequencer runs paired one-fifty reads for about eight hours, giving every genome over one hundred times coverage.", "The edge compute rack sorts the reads by sample, builds consensus genomes, assigns lineages, and places them on a phylogenetic tree.", "Finally, genomes and the cluster report are uploaded over satellite to the public health portal. Total turnaround is about fourteen hours."], "meta": ["This is the unknown pathogen meta genomics workflow. Each sample is split in the biosafety cabinet: half archived, half into bead-beating tubes.", "The centrifuge spins down debris after mechanical lysis, leaving a clear lysate.", "The extractor co-purifies DNA and RNA and removes inhibitors common in environmental samples.", "The fluorometer confirms at least fifty nanograms per sample for rapid barcoding.", "The liquid handler adds a barcode to each of the twelve samples, then pools and cleans them.", "The library is loaded onto the nanopore sequencer and data streams in real time. Adaptive sampling rejects human reads during the run.", "GPUs turn the raw signal into bases, classify species, and search for resistance genes as each read arrives.", "A preliminary identification and resistance profile is sent to the clinical team by satellite. Sample to answer takes about five hours."], "pgx": ["This is the pharmacogenomic genotyping workflow. Blood tubes from twenty-four patients are logged and kept at four degrees.", "In the biosafety cabinet, two hundred microliters of whole blood per patient go into the lysis plate.", "The extractor purifies genomic DNA into one hundred microliters.", "The fluorometer measures each sample so it can be normalized to five nanograms per microliter.", "The liquid handler assembles digital PCR reactions with allele-specific probes and a copy-number assay for two key drug-metabolism genes.", "Digital PCR splits each reaction into twenty-six thousand partitions and counts the positive ones, giving absolute copy numbers.", "The compute rack calls each genotype and drug metabolism type and writes a dosing note for every patient. Total time is about three hours."], "water": ["This is the drinking water contaminant screen. Twenty water samples arrive in polypropylene bottles and are kept at four degrees.", "A quick spin removes particulates that would clog the extraction plate.", "The liquid handler spikes isotope-labeled standards, then loads, washes, and elutes the solid-phase extraction plate.", "The finished plate waits, chilled, in the plate hotel until the mass spectrometer is free.", "The LC mass spectrometer runs a targeted method for forty PFAS and pesticide compounds, five minutes per injection.", "The compute rack integrates every peak and quantifies it against an eight-point calibration curve.", "Results are compared with regulatory limits and sent to the water utility. Total time is about four hours."], "amr": ["This is the antimicrobial resistance isolate workflow. Single colonies are picked in the biosafety cabinet into a deep-well plate.", "The plate goes into the incubator overnight at thirty-seven degrees, shaking, for about sixteen hours.", "The centrifuge pellets the cells at four thousand g, and the supernatant is removed.", "Enzymatic and bead lysis open even tough Gram-positive cells before genomic DNA is extracted.", "The fluorometer measures each extract so the input can be normalized for library prep.", "The liquid handler sets up fragmenting, tagging, and index PCR.", "The PCR machine runs twelve cycles, giving every isolate its own index.", "The fragment analyzer checks the size distribution before pooling.", "The short-read sequencer runs for about ten hours, covering each isolate at fifty times or more.", "The compute rack assembles each genome, assigns a sequence type, finds resistance and virulence genes, and clusters related isolates. About thirty hours in total, including the overnight culture."]} };
+const narr = { lang:'off', state:'off', doneT:0, text:'', token:0, ctx:null, src:null, buf:null, startAt:0, el:null, cache:{} };
+const narrRate = () => speed >= 2 ? 1.15 : 1;
+function audioCtx(){ // create or resume inside a user gesture
+  try { if(!narr.ctx) narr.ctx = new (window.AudioContext || window.webkitAudioContext)(); if(narr.ctx.state === 'suspended' && playing) narr.ctx.resume(); } catch(e){}
+  return narr.ctx;
+}
+const clipUrl = (lang, id, i) => 'audio/' + (lang === 'en' ? 'en-' : '') + id + '-' + i + '.mp3';
+function loadClip(url){
+  if(!narr.cache[url]) narr.cache[url] = fetch(url).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((res, rej) => audioCtx().decodeAudioData(ab, res, rej)))
+    .catch(err => { delete narr.cache[url]; throw err; });
+  return narr.cache[url];
+}
+function narrDone(tok){ if(tok === narr.token && narr.state === 'playing'){ narr.state = 'done'; narr.doneT = stepT; } }
+function narrFail(tok, why){ if(tok !== narr.token) return; narr.state = 'failed'; console.warn('[narration]', why);
+  const el = document.getElementById('rbSub'); if(el && !el.hidden){ lastSub = -1; } }
+narr.progress = () => {
+  if(narr.src && narr.buf && narr.ctx) return clamp((narr.ctx.currentTime - narr.startAt)*narrRate()/narr.buf.duration, 0, 1);
+  if(narr.el && isFinite(narr.el.duration) && narr.el.duration > 0) return clamp(narr.el.currentTime/narr.el.duration, 0, 1);
+  return 0;
+};
+narr.pause = () => { if(narr.ctx && narr.ctx.state === 'running') narr.ctx.suspend(); if(narr.el) narr.el.pause(); };
+narr.resume = () => { if(narr.ctx && narr.ctx.state === 'suspended') narr.ctx.resume(); if(narr.el && narr.state === 'playing') narr.el.play().catch(() => {}); };
+narr.setRate = () => { if(narr.src) narr.src.playbackRate.value = narrRate(); if(narr.el) narr.el.playbackRate = narrRate(); };
+function stopNarr(){
+  narr.token++; narr.state = 'off';
+  if(narr.src){ try { narr.src.onended = null; narr.src.stop(); } catch(e){} narr.src = null; }
+  if(narr.el){ narr.el.pause(); narr.el.onended = narr.el.onerror = null; narr.el = null; }
+  narr.buf = null;
+}
+function startClip(tok, url){
+  const ctx = audioCtx();
+  loadClip(url).then(buf => {
+    if(tok !== narr.token) return;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = narrRate(); src.connect(ctx.destination);
+    src.onended = () => narrDone(tok);
+    narr.src = src; narr.buf = buf; narr.startAt = ctx.currentTime; src.start();
+    if(!playing) ctx.suspend(); else if(ctx.state === 'suspended') ctx.resume();
+  }).catch(err => { // file:// pages cannot fetch: fall back to a media element
+    if(tok !== narr.token) return;
+    const el = new Audio(url); narr.el = el; el.playbackRate = narrRate();
+    el.onended = () => narrDone(tok); el.onerror = () => narrFail(tok, 'cannot load ' + url + ' (' + err.message + ')');
+    if(playing) el.play().catch(e => narrFail(tok, e.message));
+  });
+}
+function playNarr(){
+  stopNarr(); const book = NARR[narr.lang]; narr.text = (wf && book && book[wf.id] && book[wf.id][stepIdx]) || '';
+  if(narr.lang === 'off' || !wf || !narr.text) return;
+  narr.state = 'playing'; startClip(narr.token, clipUrl(narr.lang, wf.id, stepIdx));
+  if(stepIdx + 1 < wf.steps.length) loadClip(clipUrl(narr.lang, wf.id, stepIdx + 1)).catch(() => {});
+}
+
+function setMode(m){
+  S.mode = m;
+  ['mCut','mX','mExt'].forEach((id, i) => document.getElementById(id).setAttribute('aria-pressed', String(['cutaway','xray','exterior'][i] === m)));
+  const xr = m === 'xray';
+  shellMats.forEach(mt => { const b = mt.userData.sb;
+    if(xr){ mt.transparent = true; mt.opacity = 0.09; mt.depthWrite = false; } else { mt.transparent = b.tr; mt.opacity = b.op; mt.depthWrite = b.dw; }
+    mt.needsUpdate = true; });
+  shellG.traverse(o => { if(o.isMesh) o.castShadow = !xr; });
+  Object.values(SH).forEach(g => g.visible = true);
+  if(m === 'cutaway'){ SH.roof.visible = false; }
+  DEV.power.solar.visible = m !== 'cutaway';
+  { const pm = DEV.power.solarMat, b = pm.userData.b;
+    b.op = xr ? 0.18 : 1; b.tr = xr; b.dw = !xr;
+    pm.transparent = b.tr; pm.opacity = DEV.power.dim ? b.op*0.13 : b.op; pm.depthWrite = b.dw && !DEV.power.dim; pm.needsUpdate = true;
+    DEV.power.solar.traverse(o => { if(o.isMesh) o.castShadow = !xr; }); }
+  in1.intensity = in2.intensity = m === 'exterior' ? 0.9 : 0.55;
+}
+
+function applyDim(){
+  DEVICES.forEach(d => { const b = DEV[d.id]; const dim = wfDevs && !wfDevs.has(d.id);
+    b.dim = !!dim;
+    b.mats.forEach(m => { const o = m.userData.b; if(m.userData.hit) return;
+      if(dim){ m.transparent = true; m.opacity = o.op*0.13; m.depthWrite = false; } else { m.transparent = o.tr; m.opacity = o.op; m.depthWrite = o.dw; }
+      m.needsUpdate = true; });
+    b.g.traverse(o => { if(o.isMesh) o.castShadow = !dim && !o.material.transparent; });
+  });
+}
+
+const ACC = new THREE.Color(0xf2a33a), _c = new THREE.Color();
+function applyGlow(t){
+  const cur = wf ? wf.steps[stepIdx].d : null;
+  DEVICES.forEach(d => { const b = DEV[d.id]; let k = 0;
+    if(S.hover === d.id) k = 0.16;
+    if(S.selected === d.id) k = Math.max(k, 0.14 + 0.06*Math.sin(t*3));
+    if(cur === d.id) k = Math.max(k, 0.2 + 0.12*Math.sin(t*4));
+    if(Math.abs(k - b.lastK) < 0.004) return; b.lastK = k;
+    b.mats.forEach(m => { if(!m.emissive || !m.userData.b.em) return; m.emissive.copy(m.userData.b.em).add(_c.copy(ACC).multiplyScalar(k)); });
+  });
+}
+
+/* selection outline */
+const selBox = new THREE.Box3Helper(new THREE.Box3(), 0xf2a33a); selBox.visible = false; scene.add(selBox);
+selBox.material.toneMapped = false; selBox.material.transparent = true; selBox.material.opacity = 0.85;
+function updateSelBox(){
+  if(!S.selected || S.selected === 'power' || S.selected === 'arm'){ selBox.visible = false; return; }
+  selBox.box.setFromObject(DEV[S.selected].g).expandByScalar(0.03); selBox.visible = true;
+}
+
+/* camera tween */
+let tw = null;
+function tweenTo(tgt, pos, dur){ tw = {t0:performance.now(), dur:(dur||1.1)*1000, fT:controls.target.clone(), fP:camera.position.clone(), tT:tgt.clone(), tP:pos.clone()}; }
+function flyTo(id, far){
+  const b = DEV[id]; const f = focusW(id);
+  const dir = b.faceW.clone().multiplyScalar(1).add(new THREE.Vector3(0.28, far ? 1.0 : 0.78, 0)).normalize();
+  const ins = panelInsets(), w = window.innerWidth, h = window.innerHeight;
+  const crowd = Math.max(w/Math.max(200, w - ins.L - ins.R), h/Math.max(200, h - ins.T - ins.B));
+  let dist = b.dist * (narrow() ? 1.45 : 1) * Math.pow(crowd, 0.8);
+  if(far) dist = Math.max(dist*1.6, 3.4);
+  tweenTo(f, f.clone().add(dir.multiplyScalar(dist)));
+}
+controls.addEventListener('start', () => { tw = null; });
+
+/* keep the scene centred in the area not covered by panels */
+function panelInsets(){
+  const w = window.innerWidth, h = window.innerHeight; const o = {L:0, R:0, T:64, B:0};
+  ['#left','#info','#runbar'].forEach(sel => { const el = document.querySelector(sel); if(!el || el.hidden) return;
+    const r = el.getBoundingClientRect(); if(r.width === 0 || r.height === 0) return;
+    if(r.width > w*0.6 || (r.left > w*0.2 && r.right < w*0.8)) o.B = Math.max(o.B, h - r.top + 8);
+    else if(r.height < h*0.25) return;
+    else if(r.left < w*0.4) o.L = Math.max(o.L, r.right + 8);
+    else o.R = Math.max(o.R, w - r.left + 8); });
+  return o;
+}
+const VO = {x:0, y:0, sx:null, sy:null};
+function updateViewOffset(dt){
+  const w = sceneEl.clientWidth || window.innerWidth, h = sceneEl.clientHeight || window.innerHeight;
+  const ins = panelInsets();
+  const tx = -(ins.L - ins.R)/2, ty = -(ins.T - ins.B)/2;
+  const k = 1 - Math.exp(-dt*5); VO.x = lerp(VO.x, tx, k); VO.y = lerp(VO.y, ty, k);
+  const rx = Math.round(VO.x), ry = Math.round(VO.y);
+  if(rx !== VO.sx || ry !== VO.sy || camera.view === null || camera.view.fullWidth !== w || camera.view.fullHeight !== h){
+    VO.sx = rx; VO.sy = ry; camera.setViewOffset(w, h, rx, ry, w, h); }
+}
+
+/* =========================================================
+   WORKFLOW ENGINE
+   ========================================================= */
+let pathMesh = null, segs = [];
+const dashC = document.createElement('canvas'); dashC.width = 64; dashC.height = 4;
+(function(){ const k = dashC.getContext('2d'); k.clearRect(0,0,64,4); k.fillStyle = '#ffffff'; k.fillRect(0,0,38,4); })();
+const dashTex = new THREE.CanvasTexture(dashC); dashTex.wrapS = THREE.RepeatWrapping;
+const pathMat = new THREE.MeshBasicMaterial({map:dashTex, color:0xffb547, transparent:true, opacity:.95, depthWrite:false, toneMapped:false});
+const puck = new THREE.Group(); scene.add(puck); puck.visible = false;
+puck.add(new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 14), MB(0xffc46b)));
+const halo = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 14), MB(0xf2a33a, {transparent:true, opacity:.25, depthWrite:false})); puck.add(halo);
+const puckLight = new THREE.PointLight(0xffb547, 0.8, 1.6); puck.add(puckLight);
+
+function clearPath(){ if(pathMesh){ scene.remove(pathMesh); pathMesh.geometry.dispose(); pathMesh = null; } segs = []; }
+function buildPath(){
+  clearPath();
+  const pts = wf.steps.map(s => anchorW(s.d));
+  const cp = new THREE.CurvePath();
+  for(let i = 1; i < pts.length; i++){
+    const a = pts[i-1], b = pts[i];
+    if(a.distanceTo(b) < 0.05){ segs[i] = null; continue; }
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    mid.y = Math.max(a.y, b.y) + 0.3 + a.distanceTo(b)*0.06; mid.z *= 0.25;
+    const c = new THREE.QuadraticBezierCurve3(a.clone(), mid, b.clone()); segs[i] = c; cp.add(c);
+  }
+  if(cp.curves.length){
+    const geo = new THREE.TubeGeometry(cp, cp.curves.length*48, 0.011, 6, false);
+    pathMesh = new THREE.Mesh(geo, pathMat); pathMesh.renderOrder = 5; scene.add(pathMesh);
+    dashTex.repeat.x = cp.getLength()*7;
+  }
+}
+
+function startWorkflow(id){
+  wf = WORKFLOWS.find(w => w.id === id);
+  wfDevs = new Set(wf.steps.map(s => s.d)); wfDevs.add('arm');
+  if(S.mode !== 'cutaway') setMode('cutaway');
+  finished = false; buildPath(); applyDim(); puck.visible = true;
+  if(S.selected) closeInfo();
+  renderLeft(); buildTrack();
+  document.getElementById('runbar').hidden = false;
+  setCollapsed(true);
+  setPlaying(true); audioCtx(); setStep(0);
+}
+function stopWorkflow(){
+  stopNarr();
+  wf = null; wfDevs = null; clearPath(); applyDim(); puck.visible = false; playing = false;
+  document.getElementById('runbar').hidden = true; renderLeft(); syncLabels();
+  setCollapsed(false);
+}
+function setStep(i){
+  stepIdx = clamp(i, 0, wf.steps.length - 1); stepT = (i === 0 || !segs[stepIdx]) ? TRAVEL : 0; finished = false;
+  const s = wf.steps[stepIdx]; const b = DEV[s.d];
+  if(s.d !== 'power'){ const p = b.g.position; DEV.arm.setTarget(s.d === 'cold' ? -3.85 : p.x, s.d === 'cold' ? -1 : (p.z < 0 ? -1 : 1), true); }
+  if(S.follow) flyTo(s.d, true);
+  playNarr();
+  updateRunUI(); syncLabels(); highlightStepList();
+}
+function setPlaying(p){
+  playing = p;
+  if(p){ audioCtx(); narr.resume(); } else narr.pause(); const b = document.getElementById('bPlay');
+  b.setAttribute('aria-label', p ? 'Pause' : 'Play');
+  document.getElementById('playIco').innerHTML = p ? '<path d="M4 2h3v12H4zM9 2h3v12H9z"/>' : '<path d="M4 2v12l10-6z"/>';
+}
+function tickWorkflow(dt, t){
+  if(!wf) return;
+  if(playing){ stepT += dt*speed;
+    const ready = narr.state === 'playing' ? false : narr.state === 'done' ? stepT >= Math.max(MIN_NARRATED, narr.doneT + HOLD) : stepT >= STEP_DUR;
+    if(ready){ if(stepIdx < wf.steps.length - 1) setStep(stepIdx + 1); else { stepT = STEP_DUR; setPlaying(false); finished = true; updateRunUI(); } } }
+  const seg = segs[stepIdx];
+  if(seg && stepT < TRAVEL){ const u = stepT/TRAVEL; const e = u < .5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2)/2; puck.position.copy(seg.getPoint(e)); }
+  else { puck.position.copy(anchorW(wf.steps[stepIdx].d)); puck.position.y += 0.04*Math.sin(t*3); }
+  halo.scale.setScalar(1 + 0.25*Math.sin(t*5));
+  dashTex.offset.x -= dt*0.9*speed;
+  let frac;
+  if(narr.state === 'playing') frac = 0.85*narr.progress();
+  else if(narr.state === 'done') frac = 0.85 + 0.15*clamp((stepT - narr.doneT)/HOLD, 0, 1);
+  else frac = Math.min(1, stepT/STEP_DUR);
+  const fillEl = document.querySelector('#rbTrack span.cur i'); if(fillEl) fillEl.style.width = (frac*100).toFixed(1) + '%';
+  renderSub();
+}
+
+/* =========================================================
+   UI
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const leftBody = $('#leftBody');
+let leftTab = 'wf';
+const pad = n => String(n).padStart(2, '0');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderLeft(){
+  $('#tWf').setAttribute('aria-selected', String(leftTab === 'wf'));
+  $('#tEq').setAttribute('aria-selected', String(leftTab === 'eq'));
+  if(leftTab === 'eq'){
+    const groups = {};
+    DEVICES.forEach(d => (groups[d.cat] = groups[d.cat] || []).push(d));
+    leftBody.innerHTML = Object.keys(CATS).filter(c => groups[c]).map(c =>
+      `<div class="eq-group">${esc(c)}</div>` + groups[c].map(d =>
+        `<button class="eq-item${S.selected === d.id ? ' on' : ''}" data-dev="${d.id}"><b>${pad(d.n)}</b><span><div class="nm">${esc(d.name)}</div><div class="ct"><i style="background:${CATS[d.cat]}"></i>${wfCount(d.id)} workflow${wfCount(d.id) === 1 ? '' : 's'}</div></span></button>`).join('')
+    ).join('');
+    return;
+  }
+  if(!wf){
+    leftBody.innerHTML = `<p class="intro-note">Pick a workflow to watch a sample move through the lab. Instruments it does not use fade out.</p>` +
+      WORKFLOWS.map(w => `<button class="wf-card" data-wf="${w.id}"><h3>${esc(w.name)}</h3><p>${esc(w.blurb)}</p>
+        <div class="meta"><span class="chip">TAT ${esc(w.tat)}</span><span class="chip">${w.steps.length} steps</span><span class="chip">${new Set(w.steps.map(s => s.d)).size} instruments</span></div></button>`).join('');
+    return;
+  }
+  leftBody.innerHTML = `<div class="wf-head"><button class="back" id="wfBack">← All workflows</button></div>
+    <h3 class="wf-title">${esc(wf.name)}</h3><p class="wf-blurb">${esc(wf.blurb)}</p>
+    <div class="meta"><span class="chip">TAT ${esc(wf.tat)}</span><span class="chip">${esc(wf.samples)}</span></div>
+    <ol class="steps">${wf.steps.map((s, i) => `<li data-step="${i}"><div><div class="st-a">${esc(s.a)}</div>
+      <div class="st-d">#${pad(DMAP[s.d].n)} ${esc(DMAP[s.d].name)} · <em>${esc(s.t)}</em></div><div class="st-x">${esc(s.x)}</div></div></li>`).join('')}</ol>`;
+  highlightStepList();
+}
+function wfCount(id){ return id === 'arm' ? WORKFLOWS.length : WORKFLOWS.filter(w => w.steps.some(s => s.d === id)).length; }
+function highlightStepList(){
+  if(!wf) return;
+  leftBody.querySelectorAll('ol.steps li').forEach((li, i) => { li.classList.toggle('cur', i === stepIdx); li.classList.toggle('done', i < stepIdx); });
+  const cur = leftBody.querySelector('ol.steps li.cur'); if(cur && leftTab === 'wf') cur.scrollIntoView({block:'nearest', behavior:'smooth'});
+}
+leftBody.addEventListener('click', e => {
+  const c = e.target.closest('[data-wf]'); if(c){ startWorkflow(c.dataset.wf); return; }
+  if(e.target.closest('#wfBack')){ stopWorkflow(); return; }
+  const st = e.target.closest('[data-step]'); if(st){ setStep(+st.dataset.step); return; }
+  const dv = e.target.closest('[data-dev]'); if(dv){ select(dv.dataset.dev); if(narrow()) setCollapsed(true); }
+});
+function setCollapsed(c){ $('#left').classList.toggle('collapsed', c); const b = $('#tCol'); b.textContent = c ? '+' : '–'; b.setAttribute('aria-label', c ? 'Expand panel' : 'Collapse panel'); b.title = b.getAttribute('aria-label'); if(!c) highlightStepList(); }
+$('#tWf').onclick = () => { leftTab = 'wf'; setCollapsed(false); renderLeft(); };
+$('#tEq').onclick = () => { leftTab = 'eq'; setCollapsed(false); renderLeft(); };
+$('#tCol').onclick = () => setCollapsed(!$('#left').classList.contains('collapsed'));
+
+function buildTrack(){
+  $('#rbTrack').innerHTML = wf.steps.map((s, i) => `<span data-i="${i}" title="${esc(s.a)}"><i></i></span>`).join('');
+}
+let lastSub = -1;
+function renderSub(){
+  const el = document.getElementById('rbSub'); if(!wf || el.hidden) return;
+  if(narr.state === 'failed'){ if(lastSub !== -2){ lastSub = -2; el.innerHTML = '<span class="todo">' + (narr.lang === 'zh' ? '讲解音频加载失败。' : 'Narration audio could not load.') + '</span>'; } return; }
+  const t = narr.text || '';
+  let n = t.length;
+  if(narr.state === 'playing') n = Math.round(t.length*narr.progress());
+  if(n === lastSub) return; lastSub = n;
+  el.innerHTML = '<span class="said">' + esc(t.slice(0, n)) + '</span><span class="todo">' + esc(t.slice(n)) + '</span>';
+}
+function setVoice(lang){
+  narr.lang = lang; if(lang !== 'off') audioCtx();
+  document.querySelectorAll('#voiceSel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === lang)));
+  if(!wf) return;
+  if(lang !== 'off'){ const keep = stepT; playNarr(); stepT = keep; } else { stopNarr(); narr.text = ''; }
+  updateRunUI();
+}
+document.querySelectorAll('#voiceSel button').forEach(b => b.onclick = () => setVoice(b.dataset.v));
+setVoice('off'); // narration is opt-in
+$('#rbTrack').addEventListener('click', e => { const s = e.target.closest('[data-i]'); if(s) setStep(+s.dataset.i); });
+function updateRunUI(){
+  if(!wf) return; const s = wf.steps[stepIdx], d = DMAP[s.d];
+  $('#rbCount').textContent = finished ? 'COMPLETE · ' + wf.steps.length + ' STEPS' : `STEP ${stepIdx + 1} / ${wf.steps.length}`;
+  $('#rbTime').textContent = s.t; $('#rbDev').textContent = '#' + pad(d.n) + ' ' + d.name;
+  $('#rbTitle').textContent = finished ? 'Workflow complete. Results delivered.' : s.a;
+  const showSub = narr.lang !== 'off' && !finished && !!narr.text;
+  $('#rbSub').setAttribute('lang', narr.lang === 'zh' ? 'zh-CN' : 'en');
+  $('#rbSub').hidden = !showSub; $('#rbDetail').hidden = showSub; lastSub = -1; renderSub();
+  $('#rbDetail').textContent = finished ? `${wf.name}: total turnaround ${wf.tat}. Press play to replay.` : s.x;
+  $('#rbTrack').querySelectorAll('span').forEach((sp, i) => { sp.classList.toggle('done', i < stepIdx || finished); sp.classList.toggle('cur', i === stepIdx && !finished); const f = sp.querySelector('i'); if(i !== stepIdx || finished) f.style.width = '0'; });
+}
+$('#bPlay').onclick = () => { if(finished){ setStep(0); setPlaying(true); return; } setPlaying(!playing); };
+$('#bPrev').onclick = () => setStep(stepIdx - 1);
+$('#bNext').onclick = () => setStep(stepIdx + 1);
+$('#bExit').onclick = stopWorkflow;
+document.querySelectorAll('.spd button[data-s]').forEach(b => b.onclick = () => { speed = +b.dataset.s; DEV.arm.st.speed = speed; narr.setRate();
+  document.querySelectorAll('.spd button[data-s]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+$('#cFollow').onchange = e => { S.follow = e.target.checked; if(S.follow && wf) flyTo(wf.steps[stepIdx].d, true); };
+
+/* info panel */
+function select(id){
+  S.selected = id; const d = DMAP[id];
+  if(id === 'power' && S.mode === 'cutaway') setMode('xray');
+  $('#iNum').textContent = pad(d.n); $('#iName').textContent = d.name;
+  $('#iCat').innerHTML = `<i style="background:${CATS[d.cat]}"></i>${esc(d.cat)}`;
+  const used = id === 'arm' ? WORKFLOWS : WORKFLOWS.filter(w => w.steps.some(s => s.d === id));
+  $('#iBody').innerHTML = `<div class="status-row"><i></i>RUNNING · position ${pad(d.n)}</div>
+    <p class="lead">${esc(d.intro)}</p>
+    <h4>Specifications</h4><dl class="specs">${d.specs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <h4>Capabilities</h4><ul class="caps">${d.caps.map(c => `<li>${esc(c)}</li>`).join('')}</ul>
+    <h4>Used in workflows</h4><div class="used">${used.length ? used.map(w => `<button class="chip" data-run="${w.id}">▶ ${esc(w.name)}</button>`).join('') : '<span class="chip">Support system</span>'}</div>`;
+  document.body.classList.remove('zen'); $('#bZen').setAttribute('aria-pressed', 'false');
+  $('#info').hidden = false; $('#runbar').classList.toggle('lifted', false);
+  updateSelBox(); flyTo(id); syncLabels();
+  if(leftTab === 'eq') renderLeft();
+}
+function closeInfo(){ S.selected = null; $('#info').hidden = true; updateSelBox(); syncLabels(); if(leftTab === 'eq') renderLeft(); }
+$('#iClose').onclick = closeInfo;
+$('#iBody').addEventListener('click', e => { const r = e.target.closest('[data-run]'); if(r){ leftTab = 'wf'; if(narrow()) closeInfo(); startWorkflow(r.dataset.run); } });
+function toggleZen(){ const on = document.body.classList.toggle('zen'); $('#bZen').setAttribute('aria-pressed', String(on)); $('#bZen').textContent = on ? 'Show panels' : 'Hide panels'; }
+$('#bZen').onclick = toggleZen;
+window.addEventListener('keydown', e => { if((e.key === 'v' || e.key === 'V') && wf && !e.metaKey && !e.ctrlKey) setVoice({off:'en', en:'zh', zh:'off'}[narr.lang]); if((e.key === 'h' || e.key === 'H') && !e.metaKey && !e.ctrlKey && !/INPUT|TEXTAREA/.test(e.target.tagName)) toggleZen(); if(e.key === 'Escape'){ if(!$('#info').hidden) closeInfo(); else if(wf) stopWorkflow(); } if(e.key === ' ' && wf && e.target === document.body){ e.preventDefault(); $('#bPlay').click(); } });
+
+/* top bar */
+$('#mCut').onclick = () => setMode('cutaway');
+$('#mX').onclick = () => setMode('xray');
+$('#mExt').onclick = () => setMode('exterior');
+$('#bLabels').onclick = e => { const on = document.body.classList.toggle('nolabels'); e.currentTarget.setAttribute('aria-pressed', String(!on)); };
+$('#bSpin').onclick = e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.setAttribute('aria-pressed', String(controls.autoRotate)); };
+$('#bReset').onclick = () => tweenTo(home().t, home().p, 1.2);
+
+/* labels */
+const labelsEl = $('#labels');
+const LBL = {};
+DEVICES.forEach(d => {
+  const el = document.createElement('button'); el.className = 'lbl'; el.type = 'button';
+  el.innerHTML = `<b>${pad(d.n)}</b><span>${esc(d.name)}</span>`; el.setAttribute('aria-label', d.name);
+  el.addEventListener('click', () => select(d.id));
+  el.addEventListener('mouseenter', () => { S.hover = d.id; }); el.addEventListener('mouseleave', () => { if(S.hover === d.id) S.hover = null; });
+  labelsEl.appendChild(el); LBL[d.id] = el;
+});
+function syncLabels(){
+  const cur = wf ? wf.steps[stepIdx].d : null;
+  DEVICES.forEach(d => { const el = LBL[d.id];
+    el.classList.toggle('on', S.selected === d.id); el.classList.toggle('cur', cur === d.id);
+    el.classList.toggle('dim', !!(wfDevs && !wfDevs.has(d.id))); });
+}
+function placeLabels(){
+  const w = sceneEl.clientWidth, h = sceneEl.clientHeight;
+  const dist = camera.position.distanceTo(controls.target);
+  const compact = dist > 7.5 || narrow();
+  DEVICES.forEach(d => { const el = LBL[d.id];
+    const vis = true;
+    _v.copy(anchorW(d.id)).project(camera);
+    if(!vis || _v.z > 1 || _v.x < -1.1 || _v.x > 1.1 || _v.y < -1.1 || _v.y > 1.1){ el.style.visibility = 'hidden'; return; }
+    el.style.visibility = 'visible';
+    el.style.transform = `translate(${((_v.x + 1)/2*w).toFixed(1)}px, ${((1 - _v.y)/2*h).toFixed(1)}px) translate(-50%, -50%)`;
+    el.classList.toggle('compact', compact);
+    el.style.zIndex = String(1000 - Math.round(_v.z*1000));
+  });
+}
+
+/* picking */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const pickables = [shellG, ...devGroups];
+const isVis = o => { while(o){ if(!o.visible) return false; o = o.parent; } return true; };
+function pick(cx, cy){
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((cx - r.left)/r.width)*2 - 1, -((cy - r.top)/r.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(pickables, true);
+  for(const h of hits){
+    const o = h.object; if(!isVis(o)) continue;
+    if(o.userData.shell){ if(S.mode === 'xray') continue; return null; }
+    const id = o.userData.devId; if(!id) continue;
+    if(DEV[id].dim) continue;
+    return id;
+  }
+  return null;
+}
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = {x:e.clientX, y:e.clientY, t:performance.now()}; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if(!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); const quick = performance.now() - down.t < 600; down = null;
+  if(moved > 6 || !quick) return;
+  const id = pick(e.clientX, e.clientY);
+  if(id) select(id); else if(S.selected) closeInfo();
+});
+let hoverPending = false, lastMove = null;
+renderer.domElement.addEventListener('pointermove', e => {
+  if(e.pointerType !== 'mouse') return; lastMove = e;
+  if(hoverPending) return; hoverPending = true;
+  requestAnimationFrame(() => { hoverPending = false; if(down && Math.hypot(lastMove.clientX - down.x, lastMove.clientY - down.y) > 6) return;
+    const id = pick(lastMove.clientX, lastMove.clientY); S.hover = id; renderer.domElement.style.cursor = id ? 'pointer' : 'grab'; });
+});
+renderer.domElement.addEventListener('pointerleave', () => { S.hover = null; });
+
+/* resize */
+function resize(){ const w = sceneEl.clientWidth || window.innerWidth, h = sceneEl.clientHeight || window.innerHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', resize); resize();
+
+/* idle arm behaviour */
+const IDLE = ['extract','lh','tc','dpcr','srseq','centrifuge','incubator','frag','lcms'];
+let idleT = 0;
+function idleArm(dt){
+  if(wf) return; idleT -= dt; if(idleT > 0) return; idleT = 5.5;
+  const id = IDLE[Math.floor(Math.random()*IDLE.length)]; const p = DEV[id].g.position;
+  DEV.arm.setTarget(p.x, p.z < 0 ? -1 : 1, Math.random() > 0.4);
+}
+
+/* =========================================================
+   LOOP
+   ========================================================= */
+const clock = new THREE.Clock(); let scrAcc = 0, T = 0;
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+setMode('cutaway'); renderLeft(); syncLabels();
+function frame(){
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05); T += reduce ? dt*0.35 : dt;
+  if(tw){ const k = clamp((performance.now() - tw.t0)/tw.dur, 0, 1); const e = 1 - Math.pow(1 - k, 3);
+    controls.target.lerpVectors(tw.fT, tw.tT, e); camera.position.lerpVectors(tw.fP, tw.tP, e); if(k >= 1) tw = null; }
+  updateViewOffset(dt);
+  controls.update();
+  if(S.mode === 'cutaway'){ const cp = camera.position;
+    SH.near.visible = cp.z < 0.2; SH.far.visible = cp.z > -0.2; SH.rear.visible = cp.x > -4.7; SH.bulk.visible = cp.x < 3.1; SH.roofF.visible = true; SH.cab.visible = true; }
+  DEVICES.forEach(d => { const b = DEV[d.id]; if(b.update) b.update(T, reduce ? dt*0.35 : dt); });
+  idleArm(dt); tickWorkflow(dt, T);
+  scrAcc += dt; if(scrAcc > 0.1){ scrAcc = 0; screens.forEach(s => { s.draw(s.ctx, T, s.w, s.h); s.tex.needsUpdate = true; }); }
+  applyGlow(T);
+  renderer.render(scene, camera);
+  placeLabels();
+}
+frame();
+const ld = document.getElementById('loading'); ld.style.opacity = '0'; setTimeout(() => ld.remove(), 450);
+})();
+</script>
