@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>boheling</title>
-<meta name="description" content="我做东西，多半是讲解性的东西。 / I make things, mostly things that explain.">
+<meta name="description" content="倒腾点有意思的东西，多半是讲解类的。 / Tinkering with interesting things, mostly the explaining kind.">
 <link rel="icon" href="assets/favicon.svg">
 <meta property="og:title" content="boheling">
-<meta property="og:description" content="我做东西，多半是讲解性的东西。 / I make things, mostly things that explain.">
+<meta property="og:description" content="倒腾点有意思的东西，多半是讲解类的。 / Tinkering with interesting things, mostly the explaining kind.">
 <meta property="og:image" content="https://boheling.github.io/assets/plate-films.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,19 +87,28 @@
   .lang button:hover { color: var(--ink); }
 
   /* ---- introductory wall text ---- */
-  .intro { margin: clamp(3.5rem, 9vw, 6.5rem) 0 0; max-width: var(--measure); }
+  /* The measure belongs to the reading text, not to the headline — with it on the
+     section, the title was boxed to 33rem and broke as 「…的 / 东西。」 */
+  .intro { margin: clamp(3.5rem, 9vw, 6.5rem) 0 0; }
+  .intro p { max-width: var(--measure); }
   .intro h1 {
     margin: 0;
-    font-size: clamp(3.2rem, 11vw, 5.6rem);
-    line-height: .96;
+    max-width: none;
+    font-size: clamp(2.7rem, 7.6vw, 4.9rem);
+    line-height: 1.02;
     font-weight: 400;
     letter-spacing: -.025em;
     font-variation-settings: "SOFT" 90, "WONK" 1, "opsz" 120;
   }
-  html[lang="zh"] .intro h1 { letter-spacing: .01em; line-height: 1.06; font-weight: 500;
-    font-size: clamp(2.9rem, 10vw, 4.8rem); }
+  html[lang="zh"] .intro h1 { letter-spacing: .012em; line-height: 1.12; font-weight: 500;
+    font-size: clamp(1.85rem, 8.2vw, 4.3rem); }
+  /* ten characters have to survive a 360 px phone without breaking 东/西 apart */
+  /* A browser will break Chinese between any two characters, so on a phone too
+     narrow for ten of them the title could split 东|西. Keeping the tail together
+     puts the break where the sense is: 倒腾点 / 有意思的东西。 */
+  .keep { white-space: nowrap; }
   .stroke { display: block; width: clamp(9rem, 22vw, 14rem); height: 14px; margin: 1.6rem 0 2rem; color: color-mix(in srgb, var(--blush) 72%, var(--iris) 28%); }
-  .intro p { margin: 0 0 1.05rem; }
+  .intro p { margin: 0 0 1.05rem; max-width: var(--measure); }
   .intro p:last-child { color: var(--ink-soft); }
 
   /* ---- the hang: three works, three sizes, three heights ---- */
@@ -160,6 +169,7 @@
   }
   @media (max-width: 560px) {
     body { font-size: 18px; }
+    html[lang="zh"] .intro h1 { letter-spacing: 0; }
     .work--storyshot, .work--lab { width: 100%; }
     .work { --tilt: 0deg; }
   }
@@ -191,7 +201,7 @@
   </div>
 
   <section class="intro">
-    <h1><span data-zh>我做东西。</span><span data-en>I make things.</span></h1>
+    <h1><span data-zh>倒腾点<span class="keep">有意思的东西。</span></span><span data-en>Tinkering with interesting things.</span></h1>
 
     <svg class="stroke" viewBox="0 0 220 14" fill="none" aria-hidden="true" preserveAspectRatio="none">
       <path d="M2 9.4 C 38 4.2, 72 11.2, 110 7.1 C 148 3.1, 182 9.6, 218 5.2"
@@ -199,8 +209,8 @@
     </svg>
 
     <p>
-      <span data-zh>多半是讲解性的东西：把一件复杂的事拆开，画出来，讲到一个十岁小孩也能跟上。</span>
-      <span data-en>Mostly things that explain: take something complicated apart, draw it, and get it
+      <span data-zh>多半是讲解类的：把一件复杂的事拆开，画出来，讲到一个十岁小孩也能跟上。</span>
+      <span data-en>Mostly the explaining kind: take something complicated apart, draw it, and get it
         clear enough that a ten-year-old could follow.</span>
     </p>
     <p>
